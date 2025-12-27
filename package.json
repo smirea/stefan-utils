@@ -3,6 +3,9 @@
     "module": "index.ts",
     "type": "module",
     "private": true,
+    "scripts": {
+        "lint": "eslint --fix --cache --cache-location node_modules/.cache/eslintcache"
+    },
     "dependencies": {
         "@eslint/compat": "^2.0.0",
         "@eslint/eslintrc": "^3.3.3",
@@ -16,6 +19,8 @@
         "eslint-plugin-import": "^2.32.0",
         "eslint-plugin-prettier": "^5.5.4",
         "globals": "^16.5.0",
-        "lodash": "^4.17.21"
+        "lefthook": "^2.0.9",
+        "lodash": "^4.17.21",
+        "prettier": "^3.7.4"
     }
 }

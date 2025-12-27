@@ -21,23 +21,20 @@ const { args } = parseArgv({
 const root = path.join(args.path, args.name);
 
 void createScript(async function init() {
-    const dependencies = ['@types/bun', 'lodash', 'typescript'];
+    const dependencies = ['@types/bun', 'lodash', 'typescript', 'eslint', 'prettier', 'lefthook', 'kill-port-process'];
+    const assetFilePath = (file: string) => path.join(__dirname, 'files', file);
 
     console.log(style.header('create root'));
     if (fs.existsSync(root)) throw new Error(`root "${root}" already exists`);
-    disk.createDir(root);
-    writeGitignore(path.join(root, '.gitignore'));
-    writeTsconfig(path.join(root, 'tsconfig.json'));
-    disk.writeJsonFile(
-        path.join(root, args.name + '.code-workspace'),
-        {
-            'folders': [{ 'path': '.' }],
-            'settings': {},
-        },
-    );
+    disk.setRoot(root);
+    disk.createDir('.');
+    disk.copyFile({ from: assetFilePath('gitignore'), to: '.gitignore' });
+    disk.copyFile({ from: assetFilePath('tsconfig.json'), to: 'tsconfig.json' });
+    disk.copyFile({ from: assetFilePath('lefthook.yml'), to: '.lefthook.yml' });
+    disk.copyFile({ from: assetFilePath('vscode.code-workspace'), to: args.name + '.code-workspace' });
     const eslintCmd = `./generate-eslintConfig.ts ${args.type === 'client-server' ? '--react' : '--no-react'}`;
     disk.writeFile(
-        path.join(root, 'eslint.config.js'),
+        'eslint.config.js',
         cmd(eslintCmd, { cwd: __dirname, stdio: 'pipe' }).toString(),
     );
     dependencies.push(
@@ -45,171 +42,83 @@ void createScript(async function init() {
     )
     cmd.setCWD(root);
 
+    disk.writeJsonFile(
+        'package.json',
+        {
+            name: args.name,
+            private: true,
+            scripts: {
+                lint: 'eslint --fix --cache --cache-location node_modules/.cache/eslintcache',
+                test: 'bun test',
+            },
+        },
+    );
+
     switch (args.type) {
         case 'node':
             const src = path.join(root, 'src');
             disk.createDir(src);
             disk.writeFile(
-                path.join(src, 'index.ts'),
+                'src/index.ts',
                 `console.log('Hello, ${args.name}!');`
             );
-            disk.writeJsonFile(
-                path.join(root, 'package.json'),
-                {
-                    name: args.name,
-                    private: true,
-                    scripts: {
-                        dev: 'bun --watch src/index.ts',
-                        test: 'bun test',
-                    },
+            disk.updateJsonFile('package.json', (data) => ({
+                ...data,
+                scripts: {
+                    ...data.scripts,
+                    dev: 'bun --watch src/index.ts',
                 },
-            );
-            cmd('bun add ' + dependencies.sort().join(' '));
+            }));
             break;
         case 'client-server':
             disk.writeFile('.env', textBlock`
-                API_PORT=3000
+                API_PORT=3001
                 CLIENT_PORT=3000
+                VITE_API_URL=http://localhost:3001
             `);
-            disk.writeJsonFile(
-                path.join(root, 'package.json'),
-                {
-                    name: args.name,
-                    private: true,
-                },
-            );
-            writeTsconfig(path.join(root, 'tsconfig.json'));
-            dependencies.push('react', 'react-dom', 'vite');
-            cmd('bun add ' + dependencies.sort().join(' '));
 
             console.log(style.header('create server'));
-            const serverDir = path.join(root, 'server');
-            const serverSrc = path.join(serverDir, 'src');
-            disk.createDir(serverDir);
-            disk.createDir(serverSrc);
-            disk.writeFile(
-                path.join(serverSrc, 'index.ts'),
-                textBlock`
-                    const server = Bun.serve({
-                        development: true,
-                        port: process.env.API_PORT,
-                        routes: {
-                            '/status': Response.json({ ok: true }),
-                            '/*':  Response.json({ ok: false, error: 'Not found' }, { status: 404 }),
-                        },
-                    });
-
-                    console.log('Server running at:', server.url);
-                `
-            );
-            disk.writeJsonFile(
-                path.join(serverDir, 'package.json'),
-                {
-                    name: 'server',
-                    private: true,
-                    scripts: {
-                        dev: 'bun --watch src/index.ts',
-                        test: 'bun test',
-                    },
-                },
-            );
-            disk.writeJsonFile(
-                path.join(root, 'server', 'tsconfig.json'),
-                {
-                    extends: '../tsconfig.json',
-                },
-            );
+            disk.copyDir({ from: assetFilePath('server'), to: 'server' });
 
             console.log(style.header('create client'));
-            const clientDir = path.join(root, 'client');
-            const clientSrc = path.join(clientDir, 'src');
-            disk.createDir(clientSrc);
-            disk.writeFile(
-                path.join(clientSrc, 'main.ts'),
-                textBlock`
-                    import { StrictMode } from 'react'
-                    import { createRoot } from 'react-dom/client'
-                    import './index.css'
-                    import App from './App.tsx'
+            disk.copyDir({ from: assetFilePath('client'), to: 'client' });
+            const bunRun = 'bun run --elide-lines 0 --no-clear-screen --install fallback --env-file .env --env-file .env.local --filter ';
+            disk.updateJsonFile('package.json', (data) => ({
+                ...data,
+                scripts: {
+                    ...data.scripts,
+                    'server:dev': bunRun + 'server dev',
+                    'client:dev': bunRun + 'client dev',
+                    dev: "concurrently --restart-tries=-1 --restart-after=1000 --names 'server ,client ,' --c 'green,cyan' 'bun run server:dev' 'bun run client:dev'"
+                },
+            }));
+            dependencies.push(
+                'kill-port-process',
+                'concurrently',
 
-                    createRoot(document.getElementById('root')!).render(
-                        <StrictMode>
-                            <App />
-                        </StrictMode>,
-                    )
-                `
+                'react',
+                'react-dom',
+                'vite',
+                'antd',
+                '@ant-design/icons',
+                '@vitejs/plugin-react',
+                '@tanstack/router-plugin',
+                '@emotion/react',
+                'vite-tsconfig-paths',
+                '@tailwindcss/vite',
             );
             break;
         default:
             throw new Error(`Invalid type: ${args.type}`);
     }
 
+    cmd('bun add ' + Array.from(new Set(dependencies)).sort().join(' '));
+
     cmd('git init');
     cmd('git add -A');
     cmd('git commit -m "initial setup with stefan-utils/scripts/setup-new-app"');
     if (args.repo !== 'none') {
         cmd(`gh repo create ${args.name} --${args.repo} --source=. --remote=origin`);
+        cmd('git push -u origin master');
     }
-    cmd('git push -u origin master');
 });
-
-function writeGitignore(filePath: string) {
-    disk.writeFile(
-        filePath,
-        textBlock`
-            node_modules
-
-            # output
-            out
-            dist
-            *.tgz
-
-            # dotenv environment variable files
-            .env
-            .env.development.local
-            .env.test.local
-            .env.production.local
-            .env.local
-
-            # caches
-            .eslintcache
-            .cache
-            *.tsbuildinfo
-
-            # other
-            .DS_Store
-        `
-    );
-}
-
-function writeTsconfig(filePath: string) {
-    disk.writeJsonFile(
-        filePath,
-        // pulled from bun init
-        {
-            'compilerOptions': {
-                'lib': ['ESNext'],
-                'target': 'ESNext',
-                'module': 'Preserve',
-                'moduleDetection': 'force',
-                'jsx': 'react-jsx',
-                'allowJs': true,
-
-                'moduleResolution': 'bundler',
-                'allowImportingTsExtensions': true,
-                'verbatimModuleSyntax': true,
-                'noEmit': true,
-
-                'strict': true,
-                'skipLibCheck': true,
-                'noFallthroughCasesInSwitch': true,
-                // 'noUncheckedIndexedAccess': true, // annoying
-                'noImplicitOverride': true,
-
-                'noUnusedLocals': false,
-                'noUnusedParameters': false,
-                'noPropertyAccessFromIndexSignature': false
-            }
-        },
-    );
-}

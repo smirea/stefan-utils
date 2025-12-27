@@ -1,5 +1,6 @@
 import { execSync, type ExecSyncOptions } from 'child_process';
 import fs from 'fs';
+import path from 'path';
 
 import chalk from 'chalk';
 import { formatDate } from 'date-fns';
@@ -92,38 +93,84 @@ export function exitError(err: any) {
     process.exit(1);
 }
 
-export const disk = {
-    touchedPaths: new Set<string>([]),
+type MaybeRelativePath = string | string[];
+/** It's like "fs" but with benefits */
+export const disk = new class Disk {
+    touched = new Set<string>([]);
+    root = process.cwd();
 
-    prettyPath: (p: string) => p.replace(process.cwd(), '').replace(/^\//, ''),
+    private log(operation: string, ...args: any[]) {
+        console.info(chalk.bold.blue(' ● ' + operation + ':'), ...args);
+    }
 
-    createDir: (path: string) => {
-        disk.touchedPaths.add(path);
-        console.info(chalk.bold(`- create dir:`, chalk.green(disk.prettyPath(path))));
-        fs.mkdirSync(path, { recursive: true });
-    },
+    setRoot(root: string) {
+        this.log('set root', this.prettyPath(root));
+        if (!path.isAbsolute(root)) throw new Error('Invalid root: ' + root);
+        this.root = root;
+    }
 
-    writeFile: (path: string, content: string) => {
-        disk.touchedPaths.add(path);
-        console.info(chalk.bold(`- write file:`, chalk.green(disk.prettyPath(path))));
+    getAbsolutePath(maybeRelativePath: MaybeRelativePath) {
+        if (maybeRelativePath === '.') return this.root;
+        const arrPath = Array.isArray(maybeRelativePath) ? maybeRelativePath : [maybeRelativePath];
+        if (path.isAbsolute(arrPath[0])) return path.join(...arrPath);
+        const fullPath = path.join(this.root, ...arrPath);
+        if (!fullPath.startsWith(this.root)) throw new Error('Invalid path: ' + arrPath);
+        return fullPath;
+    };
+
+    prettyPath(p: string) {
+        if (p === this.root) return '.';
+        if (p.startsWith(this.root)) return p.slice(this.root.length + 1);
+        if (p.startsWith(process.env.HOME!)) return '~/' + p.slice(process.env.HOME!.length + 1);
+        return p;
+    }
+
+    createDir(maybeRelativePaths: MaybeRelativePath) {
+        const fullPath = this.getAbsolutePath(maybeRelativePaths);
+        this.touched.add(fullPath);
+        this.log('create dir', this.prettyPath(fullPath));
+        fs.mkdirSync(fullPath, { recursive: true });
+    }
+
+    copyFile({ from, to }: { from: MaybeRelativePath, to: MaybeRelativePath }) {
+        const dest = this.getAbsolutePath(to);
+        const src = this.getAbsolutePath(from);
+        this.log('copy file', chalk.bold('to=') + chalk.green(this.prettyPath(dest)), chalk.bold('from=') + this.prettyPath(src));
+        fs.copyFileSync(src, dest);
+        this.touched.add(dest);
+    }
+
+    copyDir({ from, to }: { from: MaybeRelativePath, to: MaybeRelativePath }) {
+        const dest = this.getAbsolutePath(to);
+        const src = this.getAbsolutePath(from);
+        this.log('copy dir', chalk.bold('to=') + chalk.green(this.prettyPath(dest)), chalk.bold('from=') + this.prettyPath(src));
+        fs.cpSync(src, dest, { recursive: true });
+        this.touched.add(dest);
+    }
+
+    writeFile(maybeRelativePath: MaybeRelativePath, content: string) {
+        const path = this.getAbsolutePath(maybeRelativePath);
+        this.touched.add(path);
+        this.log('write file', this.prettyPath(path));
         fs.writeFileSync(path, content, 'utf-8');
-    },
+    }
 
-    writeJsonFile: (path: string, content: Record<string, any>) => {
-        disk.writeFile(path, JSON.stringify(content, null, 4));
-    },
+    writeJsonFile(path: MaybeRelativePath, content: Record<string, any>) {
+        this.writeFile(this.getAbsolutePath(path), JSON.stringify(content, null, 4));
+    }
 
-    updateFile: (path: string, update: (data: Record<string, any>) => Record<string, any>) => {
-        disk.touchedPaths.add(path);
-        console.info(chalk.bold(`- update file:`, chalk.green(disk.prettyPath(path))));
-        const data = JSON.parse(fs.readFileSync(path, 'utf-8'));
+    updateJsonFile(maybeRelativePath: MaybeRelativePath, update: (data: Record<string, any>) => Record<string, any>) {
+        const fullPath = this.getAbsolutePath(maybeRelativePath);
+        this.touched.add(fullPath);
+        this.log('update file', this.prettyPath(fullPath));
+        const data = JSON.parse(fs.readFileSync(fullPath, 'utf-8'));
         const updated = update(data as Record<string, any>);
-        fs.writeFileSync(path, JSON.stringify(updated, null, 4), 'utf-8');
-    },
+        fs.writeFileSync(fullPath, JSON.stringify(updated, null, 4), 'utf-8');
+    }
 
-    gitAddTouchedPaths: ({ reset = false, commit = '' } = {}) => {
+    gitAddTouchedPaths({ reset = false, commit = '' } = {}) {
         if (reset) cmd('git reset');
-        cmd(`git add ${Array.from(disk.touchedPaths).join(' ')}`);
+        cmd(`git add ${Array.from(this.touched).join(' ')}`);
         if (commit) cmd(`git commit -m '${commit}'`);
-    },
+    }
 };
