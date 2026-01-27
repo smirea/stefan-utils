@@ -21,7 +21,7 @@ const { args } = parseArgv({
 const root = path.join(args.path, args.name);
 
 void createScript(async function init() {
-    const dependencies = ['@types/bun', 'lodash', 'typescript', 'oxlint', 'lefthook', 'kill-port-process'];
+    const dependencies = ['@types/bun', 'lodash', 'typescript', '@typescript/native-preview', 'oxlint', 'lefthook', 'kill-port-process'];
     const assetFilePath = (file: string) => path.join(__dirname, 'files', file);
 
     console.log(style.header('create root'));
