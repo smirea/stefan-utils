@@ -21,7 +21,7 @@ const { args } = parseArgv({
 const root = path.join(args.path, args.name);
 
 void createScript(async function init() {
-    const dependencies = ['@types/bun', 'lodash', 'typescript', 'eslint', 'prettier', 'lefthook', 'kill-port-process'];
+    const dependencies = ['@types/bun', 'lodash', 'typescript', 'oxlint', 'lefthook', 'kill-port-process'];
     const assetFilePath = (file: string) => path.join(__dirname, 'files', file);
 
     console.log(style.header('create root'));
@@ -32,14 +32,7 @@ void createScript(async function init() {
     disk.copyFile({ from: assetFilePath('tsconfig.json'), to: 'tsconfig.json' });
     disk.copyFile({ from: assetFilePath('lefthook.yml'), to: '.lefthook.yml' });
     disk.copyFile({ from: assetFilePath('vscode.code-workspace'), to: args.name + '.code-workspace' });
-    const eslintCmd = `./generate-eslintConfig.ts ${args.type === 'client-server' ? '--react' : '--no-react'}`;
-    disk.writeFile(
-        'eslint.config.js',
-        cmd(eslintCmd, { cwd: __dirname, stdio: 'pipe' }).toString(),
-    );
-    dependencies.push(
-        ...cmd(eslintCmd + ' --print-dependencies', { cwd: __dirname, stdio: 'pipe' }).toString().split(/\s+/).filter(Boolean)
-    )
+    disk.copyFile({ from: assetFilePath('oxlint.json'), to: 'oxlint.json' });
     cmd.setCWD(root);
 
     disk.writeJsonFile(
@@ -48,7 +41,7 @@ void createScript(async function init() {
             name: args.name,
             private: true,
             scripts: {
-                lint: 'eslint --fix --cache --cache-location node_modules/.cache/eslintcache',
+                lint: 'oxlint --fix',
                 test: 'bun test',
             },
         },
