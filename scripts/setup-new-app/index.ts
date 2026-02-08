@@ -49,6 +49,7 @@ void createScript(async function init() {
 
     switch (args.type) {
         case 'node':
+            disk.copyFile({ from: assetFilePath('AGENTS.node.md'), to: 'AGENTS.md' });
             const src = path.join(root, 'src');
             disk.createDir(src);
             disk.writeFile(
@@ -64,6 +65,7 @@ void createScript(async function init() {
             }));
             break;
         case 'client-server':
+            disk.copyFile({ from: assetFilePath('AGENTS.client-server.md'), to: 'AGENTS.md' });
             disk.writeFile('.env', textBlock`
                 API_PORT=3001
                 CLIENT_PORT=3000
@@ -97,6 +99,8 @@ void createScript(async function init() {
                 '@vitejs/plugin-react',
                 '@tanstack/router-plugin',
                 '@emotion/react',
+                '@emotion/styled',
+                '@phosphor-icons/react',
                 'vite-tsconfig-paths',
                 '@tailwindcss/vite',
             );
