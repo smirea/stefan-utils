@@ -103,6 +103,7 @@ void createScript(async function init() {
                 '@phosphor-icons/react',
                 'vite-tsconfig-paths',
                 '@tailwindcss/vite',
+                'tailwindcss',
             );
             break;
         default:

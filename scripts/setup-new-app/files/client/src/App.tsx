@@ -20,6 +20,9 @@ export default function App() {
                         <Text code>@phosphor-icons/react</Text> is installed. Replace <Text code>RocketLaunch</Text> with
                         any icon from the Phosphor Icons catalog.
                     </Paragraph>
+                    <div className='rounded-md bg-slate-50 p-3 text-sm text-slate-700 ring-1 ring-slate-200'>
+                        Tailwind CSS utilities are enabled (this box is styled by Tailwind classes).
+                    </div>
                     <Space align='center' size={8}>
                         <RocketLaunch size={24} weight='fill' />
                         <Text>Phosphor icon rendering works in this template.</Text>
