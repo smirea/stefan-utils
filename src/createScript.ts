@@ -1,6 +1,7 @@
 import { execSync, type ExecSyncOptions } from 'child_process';
 import fs from 'fs';
 import path from 'path';
+import { env } from 'node:process';
 
 import chalk from 'chalk';
 import { formatDate } from 'date-fns';
@@ -121,7 +122,7 @@ export const disk = new class Disk {
     prettyPath(p: string) {
         if (p === this.root) return '.';
         if (p.startsWith(this.root)) return p.slice(this.root.length + 1);
-        if (p.startsWith(process.env.HOME!)) return '~/' + p.slice(process.env.HOME!.length + 1);
+        if (env.HOME && p.startsWith(env.HOME)) return '~/' + p.slice(env.HOME.length + 1);
         return p;
     }
 

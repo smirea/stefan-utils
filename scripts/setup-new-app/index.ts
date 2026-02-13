@@ -2,11 +2,14 @@
 
 import fs from 'fs';
 import path from 'path';
+import { env } from 'node:process';
 import { parseArgv } from 'src/parseArgv';
 import { cmd, createScript,disk,style } from 'src/createScript';
 import { textBlock } from 'src/textBlock';
 
-const codePath = path.join(process.env.HOME!, 'code');
+if (!env.HOME) throw new Error('HOME is not set');
+
+const codePath = path.join(env.HOME, 'code');
 
 const { args } = parseArgv({
     // description: 'Setup a new app',
