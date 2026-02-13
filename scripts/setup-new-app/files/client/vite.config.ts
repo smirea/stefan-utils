@@ -31,22 +31,7 @@ export default defineConfig({
             target: 'react',
             autoCodeSplitting: true,
         }) as any,
-        react({
-            jsxImportSource: '@emotion/react',
-            babel: {
-                plugins: [
-                    // ['babel-plugin-react-compiler', {}],
-                    [
-                        '@emotion/babel-plugin',
-                        {
-                            sourceMap: true,
-                            autoLabel: 'always',
-                            labelFormat: '[dirname]_[filename]_[local]',
-                        },
-                    ],
-                ],
-            },
-        }),
+        react(),
         tailwindcss() as any,
     ],
 });
