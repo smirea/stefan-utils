@@ -10,7 +10,7 @@ const server = Bun.serve({
     port: apiPort,
     routes: {
         '/status': Response.json({ ok: true }),
-        '/*':  Response.json({ ok: false, error: 'Not found' }, { status: 404 }),
+        '/*': Response.json({ ok: false, error: 'Not found' }, { status: 404 }),
     },
 });
 

@@ -6,7 +6,7 @@ interface ExtendedOption extends ParseArgsOptionDescriptor {
     description?: string;
     optional?: boolean; // Custom: marks argument as not required
     choices?: readonly string[]; // Custom: restricts value to specific choices
-};
+}
 
 export type ArgConfig = Record<string, ExtendedOption>;
 
@@ -16,8 +16,8 @@ type InferredArgsBase<T extends ArgConfig> = {
     [K in keyof T]: T[K]['type'] extends 'boolean'
         ? boolean
         : T[K] extends { choices: readonly string[] }
-        ? T[K]['choices'][number]
-        : string;
+          ? T[K]['choices'][number]
+          : string;
 };
 
 // Makes fields optional based on optional and default fields
@@ -32,7 +32,11 @@ export interface ParseArgvConfig<T extends ArgConfig> extends Omit<ParseArgsConf
     options: T;
 }
 
-export function parseArgv<const T extends ArgConfig>({ options, description, ...rest }: ParseArgvConfig<T>): { usage: () => string; args: InferredArgs<T> } {
+export function parseArgv<const T extends ArgConfig>({
+    options,
+    description,
+    ...rest
+}: ParseArgvConfig<T>): { usage: () => string; args: InferredArgs<T> } {
     // Inject automatic help option
     const optionsWithHelp = {
         ...options,
@@ -72,7 +76,7 @@ export function parseArgv<const T extends ArgConfig>({ options, description, ...
             }
             return {
                 left: `${flag}${type}`,
-                right: description
+                right: description,
             };
         });
 
@@ -108,10 +112,19 @@ export function parseArgv<const T extends ArgConfig>({ options, description, ...
 
     // 3. Validate choices if provided
     for (const [key, opt] of Object.entries(options)) {
-        if ('choices' in opt && opt.choices && opt.choices.length > 0 && (values as any)[key] !== undefined) {
+        if (
+            'choices' in opt &&
+            opt.choices &&
+            opt.choices.length > 0 &&
+            (values as any)[key] !== undefined
+        ) {
             const value = (values as any)[key] as string;
             if (!opt.choices.includes(value)) {
-                console.error(chalk.red(`Error: Invalid value for --${key}: "${value}". Must be one of: ${opt.choices.join(', ')}\n`));
+                console.error(
+                    chalk.red(
+                        `Error: Invalid value for --${key}: "${value}". Must be one of: ${opt.choices.join(', ')}\n`,
+                    ),
+                );
                 console.log(usage());
                 process.exit(1);
             }

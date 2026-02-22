@@ -4,7 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { env } from 'node:process';
 import { parseArgv } from 'src/parseArgv';
-import { cmd, createScript,disk,style } from 'src/createScript';
+import { cmd, createScript, disk, style } from 'src/createScript';
 import { textBlock } from 'src/textBlock';
 
 if (!env.HOME) throw new Error('HOME is not set');
@@ -16,15 +16,35 @@ const { args } = parseArgv({
     options: {
         name: { type: 'string', short: 'n', description: 'folder and app name' },
         path: { type: 'string', short: 'p', default: codePath },
-        type: { type: 'string', choices: ['node', 'client-server'], default: 'client-server' },
-        repo: { type: 'string', description: 'github repo type', default: 'public', choices: ['public', 'private', 'internal', 'none'] },
+        type: {
+            type: 'string',
+            short: 't',
+            choices: ['node', 'client-server'],
+            default: 'client-server',
+        },
+        repo: {
+            type: 'string',
+            short: 'g',
+            description: 'github repo type',
+            default: 'public',
+            choices: ['public', 'private', 'internal', 'none'],
+        },
     },
 });
 
 const root = path.join(args.path, args.name);
 
 void createScript(async function init() {
-    const dependencies = ['@types/bun', 'lodash', 'typescript', '@typescript/native-preview', 'oxlint', 'lefthook', 'kill-port-process'];
+    const dependencies = [
+        '@types/bun',
+        'lodash',
+        'typescript',
+        '@typescript/native-preview',
+        'oxfmt',
+        'oxlint',
+        'lefthook',
+        'kill-port-process',
+    ];
     const assetFilePath = (file: string) => path.join(__dirname, 'files', file);
 
     console.log(style.header('create root'));
@@ -34,31 +54,29 @@ void createScript(async function init() {
     disk.copyFile({ from: assetFilePath('gitignore'), to: '.gitignore' });
     disk.copyFile({ from: assetFilePath('tsconfig.json'), to: 'tsconfig.json' });
     disk.copyFile({ from: assetFilePath('lefthook.yml'), to: '.lefthook.yml' });
-    disk.copyFile({ from: assetFilePath('vscode.code-workspace'), to: args.name + '.code-workspace' });
+    disk.copyFile({
+        from: assetFilePath('vscode.code-workspace'),
+        to: args.name + '.code-workspace',
+    });
     disk.copyFile({ from: assetFilePath('oxlint.json'), to: 'oxlint.json' });
+    disk.copyFile({ from: assetFilePath('.oxfmtrc.json'), to: '.oxfmtrc.json' });
     cmd.setCWD(root);
 
-    disk.writeJsonFile(
-        'package.json',
-        {
-            name: args.name,
-            private: true,
-            scripts: {
-                lint: 'oxlint --fix',
-                test: 'bun test',
-            },
+    disk.writeJsonFile('package.json', {
+        name: args.name,
+        private: true,
+        scripts: {
+            lint: 'oxlint --fix && oxfmt',
+            test: 'bun test',
         },
-    );
+    });
 
     switch (args.type) {
         case 'node':
             disk.copyFile({ from: assetFilePath('AGENTS.node.md'), to: 'AGENTS.md' });
             const src = path.join(root, 'src');
             disk.createDir(src);
-            disk.writeFile(
-                'src/index.ts',
-                `console.log('Hello, ${args.name}!');`
-            );
+            disk.writeFile('src/index.ts', `console.log('Hello, ${args.name}!');`);
             disk.updateJsonFile('package.json', (data) => ({
                 ...data,
                 scripts: {
@@ -69,25 +87,29 @@ void createScript(async function init() {
             break;
         case 'client-server':
             disk.copyFile({ from: assetFilePath('AGENTS.client-server.md'), to: 'AGENTS.md' });
-            disk.writeFile('.env', textBlock`
+            disk.writeFile(
+                '.env',
+                textBlock`
                 API_PORT=3001
                 CLIENT_PORT=3000
                 VITE_API_URL=http://localhost:3001
-            `);
+            `,
+            );
 
             console.log(style.header('create server'));
             disk.copyDir({ from: assetFilePath('server'), to: 'server' });
 
             console.log(style.header('create client'));
             disk.copyDir({ from: assetFilePath('client'), to: 'client' });
-            const bunRun = 'bun run --elide-lines 0 --no-clear-screen --install fallback --env-file .env --env-file .env.local --filter ';
+            const bunRun =
+                'bun run --elide-lines 0 --no-clear-screen --install fallback --env-file .env --env-file .env.local --filter ';
             disk.updateJsonFile('package.json', (data) => ({
                 ...data,
                 scripts: {
                     ...data.scripts,
                     'server:dev': bunRun + 'server dev',
                     'client:dev': bunRun + 'client dev',
-                    dev: "concurrently --restart-tries=-1 --restart-after=1000 --names 'server ,client ,' --c 'green,cyan' 'bun run server:dev' 'bun run client:dev'"
+                    dev: "concurrently --restart-tries=-1 --restart-after=1000 --names 'server ,client ,' --c 'green,cyan' 'bun run server:dev' 'bun run client:dev'",
                 },
             }));
             dependencies.push(

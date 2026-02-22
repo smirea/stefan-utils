@@ -1,4 +1,5 @@
 # Stack
+
 - Tooling: Bun + TypeScript
 - Server: Bun.serve API
 - Client: React + Vite + TanStack Router

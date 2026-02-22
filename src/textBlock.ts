@@ -23,7 +23,7 @@ export function textBlock(list: TemplateStringsArray, ...args: any[]): string {
 
                 if (Array.isArray(arg)) {
                     if (arg.length > 0) {
-                        parts.push(arg.map(item => String(item)).join('\n' + indent));
+                        parts.push(arg.map((item) => String(item)).join('\n' + indent));
                     } else {
                         // Remove the trailing newline+indent for empty arrays
                         parts[parts.length - 1] = rawPrefix.slice(
@@ -53,7 +53,7 @@ export function textBlock(list: TemplateStringsArray, ...args: any[]): string {
 
                 if (Array.isArray(arg)) {
                     // Arrays in inline position should be joined with commas
-                    parts.push(arg.map(item => String(item)).join(','));
+                    parts.push(arg.map((item) => String(item)).join(','));
                 } else {
                     const argStr = String(arg);
                     if (argStr.includes('\n')) {
@@ -97,6 +97,6 @@ export function textBlock(list: TemplateStringsArray, ...args: any[]): string {
 
     const stripIndent = new RegExp(`^${minIndent || ''}`);
     return lines
-        .map(line => line.replace(stripIndent, '').replace(SUFFIX_SPACE_REG, ''))
+        .map((line) => line.replace(stripIndent, '').replace(SUFFIX_SPACE_REG, ''))
         .join('\n');
 }

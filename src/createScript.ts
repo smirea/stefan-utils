@@ -8,11 +8,11 @@ import { formatDate } from 'date-fns';
 import _ from 'lodash';
 
 export async function createScript(fn: () => any) {
-    process.on('unhandledRejection', err => {
+    process.on('unhandledRejection', (err) => {
         console.error(chalk.red.bold('[Unhandled promise rejection]'), err);
     });
 
-    await new Promise(resolve => setTimeout(resolve, 1)); // nice to have so that you can define things anywhere in the script file without worrying about initialization order
+    await new Promise((resolve) => setTimeout(resolve, 1)); // nice to have so that you can define things anywhere in the script file without worrying about initialization order
 
     try {
         await fn();
@@ -24,7 +24,6 @@ export async function createScript(fn: () => any) {
         }
         process.exit(1);
     }
-
 }
 
 let groupLevel = (() => {
@@ -46,16 +45,21 @@ let groupLevel = (() => {
 export const cmd = (() => {
     let cwd = process.cwd();
 
-    return Object.assign(function cmd(command: string, options?: ExecSyncOptions) {
-        console.log(
-            chalk.gray(`[${formatDate(new Date(), 'HH:mm:ss')}]`),
-            chalk.bold('run cmd:'),
-            chalk.green(command),
-        );
-        return execSync(command, { stdio: 'inherit', cwd, ...options });
-    }, {
-        setCWD: (target: string) => { cwd = target; },
-    });
+    return Object.assign(
+        function cmd(command: string, options?: ExecSyncOptions) {
+            console.log(
+                chalk.gray(`[${formatDate(new Date(), 'HH:mm:ss')}]`),
+                chalk.bold('run cmd:'),
+                chalk.green(command),
+            );
+            return execSync(command, { stdio: 'inherit', cwd, ...options });
+        },
+        {
+            setCWD: (target: string) => {
+                cwd = target;
+            },
+        },
+    );
 })();
 
 const isEmpty = (t: any) => !!(t == null || t === '');
@@ -64,13 +68,9 @@ export const trunc = (n: number, s: string) => _.truncate(s, { length: n, omissi
 
 export const style = {
     header: (title: string) =>
-        chalk.bgBlue.white.bold(
-            ` ⬥ ${title}`.padEnd(process.stdout.columns - groupLevel * 2),
-        ),
+        chalk.bgBlue.white.bold(` ⬥ ${title}`.padEnd(process.stdout.columns - groupLevel * 2)),
     bool: (value: any, label: string) =>
-        isEmpty(value)
-            ? ''
-            : style.label(label, chalk[value ? 'green' : 'red'](value ? '✔' : '✘')),
+        isEmpty(value) ? '' : style.label(label, chalk[value ? 'green' : 'red'](value ? '✔' : '✘')),
     number: (value: any, label: string) =>
         isEmpty(value) ? '' : style.label(label, chalk.yellow(_.round(value, 2))),
     label: (label: any, value: any) =>
@@ -96,7 +96,7 @@ export function exitError(err: any) {
 
 type MaybeRelativePath = string | string[];
 /** It's like "fs" but with benefits */
-export const disk = new class Disk {
+export const disk = new (class Disk {
     touched = new Set<string>([]);
     root = process.cwd();
 
@@ -117,7 +117,7 @@ export const disk = new class Disk {
         const fullPath = path.join(this.root, ...arrPath);
         if (!fullPath.startsWith(this.root)) throw new Error('Invalid path: ' + arrPath);
         return fullPath;
-    };
+    }
 
     prettyPath(p: string) {
         if (p === this.root) return '.';
@@ -133,18 +133,26 @@ export const disk = new class Disk {
         fs.mkdirSync(fullPath, { recursive: true });
     }
 
-    copyFile({ from, to }: { from: MaybeRelativePath, to: MaybeRelativePath }) {
+    copyFile({ from, to }: { from: MaybeRelativePath; to: MaybeRelativePath }) {
         const dest = this.getAbsolutePath(to);
         const src = this.getAbsolutePath(from);
-        this.log('copy file', chalk.bold('to=') + chalk.green(this.prettyPath(dest)), chalk.bold('from=') + this.prettyPath(src));
+        this.log(
+            'copy file',
+            chalk.bold('to=') + chalk.green(this.prettyPath(dest)),
+            chalk.bold('from=') + this.prettyPath(src),
+        );
         fs.copyFileSync(src, dest);
         this.touched.add(dest);
     }
 
-    copyDir({ from, to }: { from: MaybeRelativePath, to: MaybeRelativePath }) {
+    copyDir({ from, to }: { from: MaybeRelativePath; to: MaybeRelativePath }) {
         const dest = this.getAbsolutePath(to);
         const src = this.getAbsolutePath(from);
-        this.log('copy dir', chalk.bold('to=') + chalk.green(this.prettyPath(dest)), chalk.bold('from=') + this.prettyPath(src));
+        this.log(
+            'copy dir',
+            chalk.bold('to=') + chalk.green(this.prettyPath(dest)),
+            chalk.bold('from=') + this.prettyPath(src),
+        );
         fs.cpSync(src, dest, { recursive: true });
         this.touched.add(dest);
     }
@@ -160,7 +168,10 @@ export const disk = new class Disk {
         this.writeFile(this.getAbsolutePath(path), JSON.stringify(content, null, 4));
     }
 
-    updateJsonFile(maybeRelativePath: MaybeRelativePath, update: (data: Record<string, any>) => Record<string, any>) {
+    updateJsonFile(
+        maybeRelativePath: MaybeRelativePath,
+        update: (data: Record<string, any>) => Record<string, any>,
+    ) {
         const fullPath = this.getAbsolutePath(maybeRelativePath);
         this.touched.add(fullPath);
         this.log('update file', this.prettyPath(fullPath));
@@ -174,4 +185,4 @@ export const disk = new class Disk {
         cmd(`git add ${Array.from(this.touched).join(' ')}`);
         if (commit) cmd(`git commit -m '${commit}'`);
     }
-};
+})();
