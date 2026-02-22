@@ -1,21 +1,21 @@
 {
-    "name": "stefan-utils",
-    "private": true,
-    "type": "module",
-    "module": "index.ts",
-    "scripts": {
-        "lint": "oxlint --fix && oxfmt"
-    },
-    "dependencies": {
-        "@types/bun": "latest",
-        "@types/lodash": "^4.17.21",
-        "chalk": "^5.6.2",
-        "date-fns": "^4.1.0",
-        "globals": "^16.5.0",
-        "lefthook": "^2.0.9",
-        "lodash": "^4.17.21",
-        "oxfmt": "^0.34.0",
-        "oxlint": "^1.20.0",
-        "prettier": "^3.7.4"
-    }
+	"name": "stefan-utils",
+	"private": true,
+	"type": "module",
+	"module": "index.ts",
+	"scripts": {
+		"lint": "oxlint --fix && oxfmt"
+	},
+	"dependencies": {
+		"@types/bun": "latest",
+		"@types/lodash": "^4.17.21",
+		"chalk": "^5.6.2",
+		"date-fns": "^4.1.0",
+		"globals": "^16.5.0",
+		"lefthook": "^2.0.9",
+		"lodash": "^4.17.21",
+		"oxfmt": "^0.34.0",
+		"oxlint": "^1.20.0",
+		"prettier": "^3.7.4"
+	}
 }

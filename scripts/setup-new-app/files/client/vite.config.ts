@@ -14,24 +14,24 @@ if (Number.isNaN(clientPort)) throw new Error('CLIENT_PORT must be a valid numbe
 
 // https://vite.dev/config/
 export default defineConfig({
-    server: {
-        port: clientPort,
-        strictPort: true,
-        proxy: {
-            '/api': {
-                target: env.VITE_API_URL,
-                changeOrigin: true,
-                rewrite: (path: string) => path.replace(/^\/api/, ''),
-            },
-        },
-    },
-    plugins: [
-        tsconfigPaths(),
-        tanstackRouter({
-            target: 'react',
-            autoCodeSplitting: true,
-        }) as any,
-        react(),
-        tailwindcss() as any,
-    ],
+	server: {
+		port: clientPort,
+		strictPort: true,
+		proxy: {
+			'/api': {
+				target: env.VITE_API_URL,
+				changeOrigin: true,
+				rewrite: (path: string) => path.replace(/^\/api/, ''),
+			},
+		},
+	},
+	plugins: [
+		tsconfigPaths(),
+		tanstackRouter({
+			target: 'react',
+			autoCodeSplitting: true,
+		}) as any,
+		react(),
+		tailwindcss() as any,
+	],
 });
