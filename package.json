@@ -4,7 +4,7 @@
 	"type": "module",
 	"module": "index.ts",
 	"scripts": {
-		"lint": "oxlint --fix && oxfmt"
+		"lint": "oxlint --fix && oxfmt --no-error-on-unmatched-pattern"
 	},
 	"dependencies": {
 		"@types/bun": "latest",
