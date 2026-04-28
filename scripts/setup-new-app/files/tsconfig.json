@@ -1,7 +1,8 @@
 {
 	// pulled from bun init
 	"compilerOptions": {
-		"lib": ["ESNext"],
+		"lib": ["ESNext", "DOM"],
+		"types": ["bun"],
 		"target": "ESNext",
 		"module": "Preserve",
 		"moduleDetection": "force",
@@ -21,6 +22,10 @@
 
 		"noUnusedLocals": false,
 		"noUnusedParameters": false,
-		"noPropertyAccessFromIndexSignature": false
+		"noPropertyAccessFromIndexSignature": false,
+
+		"paths": {
+			"shared/*": ["./shared/*"]
+		}
 	}
 }

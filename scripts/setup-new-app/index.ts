@@ -99,12 +99,16 @@ void createScript(async function init() {
 			console.log(style.header('create server'));
 			disk.copyDir({ from: assetFilePath('server'), to: 'server' });
 
+			console.log(style.header('create shared'));
+			disk.copyDir({ from: assetFilePath('shared'), to: 'shared' });
+
 			console.log(style.header('create client'));
 			disk.copyDir({ from: assetFilePath('client'), to: 'client' });
 			const bunRun =
 				'bun run --elide-lines 0 --no-clear-screen --install fallback --env-file .env --env-file .env.local --filter ';
 			disk.updateJsonFile('package.json', data => ({
 				...data,
+				workspaces: ['server', 'client'],
 				scripts: {
 					...data.scripts,
 					'server:dev': bunRun + 'server dev',
@@ -121,7 +125,10 @@ void createScript(async function init() {
 				'vite',
 				'antd',
 				'@ant-design/icons',
+				'@types/react',
+				'@types/react-dom',
 				'@vitejs/plugin-react',
+				'@tanstack/react-router',
 				'@tanstack/router-plugin',
 				'@emotion/react',
 				'@emotion/styled',
