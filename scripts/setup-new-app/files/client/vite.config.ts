@@ -10,6 +10,7 @@ if (!env.VITE_API_URL) throw new Error('VITE_API_URL is not set');
 
 const clientPort = Number(env.CLIENT_PORT);
 if (Number.isNaN(clientPort)) throw new Error('CLIENT_PORT must be a valid number');
+const allowedHosts = env.CLIENT_HOST ? [env.CLIENT_HOST] : undefined;
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -17,12 +18,14 @@ export default defineConfig({
 		tsconfigPaths: true,
 	},
 	server: {
+		allowedHosts,
 		port: clientPort,
 		strictPort: true,
 		proxy: {
 			'/api': {
 				target: env.VITE_API_URL,
 				changeOrigin: true,
+				secure: false,
 				rewrite: (path: string) => path.replace(/^\/api/, ''),
 			},
 		},

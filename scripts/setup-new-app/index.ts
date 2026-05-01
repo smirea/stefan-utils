@@ -10,9 +10,23 @@ import { textBlock } from 'src/textBlock';
 if (!env.HOME) throw new Error('HOME is not set');
 
 const codePath = path.join(env.HOME, 'code');
+const defaultLocalhostPrefixArg = '__default_localhost_prefix__';
+
+function normalizeArgv(argv: string[]) {
+	const normalized = [];
+	for (let i = 0; i < argv.length; i++) {
+		const value = argv[i]!;
+		normalized.push(value);
+		if (value === '--localhost' && (!argv[i + 1] || argv[i + 1]!.startsWith('-'))) {
+			normalized.push(defaultLocalhostPrefixArg);
+		}
+	}
+	return normalized;
+}
 
 const { args } = parseArgv({
 	// description: 'Setup a new app',
+	args: normalizeArgv(process.argv.slice(2)),
 	options: {
 		name: { type: 'string', short: 'n', description: 'folder and app name' },
 		path: { type: 'string', short: 'p', default: codePath },
@@ -29,10 +43,78 @@ const { args } = parseArgv({
 			default: 'public',
 			choices: ['public', 'private', 'internal', 'none'],
 		},
+		localhost: {
+			type: 'string',
+			optional: true,
+			description: 'localias host prefix for client-server apps, defaults to app name',
+		},
+		'no-localhost': {
+			type: 'boolean',
+			description: 'disable localias setup for client-server apps',
+		},
+		port: {
+			type: 'string',
+			optional: true,
+			description: 'client port for client-server apps, API uses the next port',
+		},
 	},
 });
 
 const root = path.join(args.path, args.name);
+const defaultClientPort = 3000;
+
+function parsePort(port: string | undefined) {
+	if (!port) return;
+	const parsedPort = Number(port);
+	if (!Number.isInteger(parsedPort) || parsedPort < 1 || parsedPort > 65534) {
+		throw new Error('--port must be an integer from 1 to 65534');
+	}
+	return parsedPort;
+}
+
+function getNextLocaliasPort() {
+	const listOutput = cmd('localias list', { stdio: 'pipe', encoding: 'utf8' }).toString();
+	const ports = Array.from(listOutput.matchAll(/->\s*(\d+)/g), match => Number(match[1]));
+	const maxPort = Math.max(5990, ...ports.filter(Number.isFinite));
+	return Math.floor(maxPort / 10) * 10 + 10;
+}
+
+function getLocalhostPrefix(value: string) {
+	const prefix = value.trim().toLowerCase();
+	if (!/^[a-z0-9-]+$/.test(prefix)) {
+		throw new Error('--localhost must contain only letters, numbers, and dashes');
+	}
+	return prefix;
+}
+
+function getClientServerNetworkConfig() {
+	const port = parsePort(args.port);
+	const localhost = args.localhost as string | false | undefined;
+	if (localhost === false) {
+		const clientPort = port ?? defaultClientPort;
+		const apiPort = clientPort + 1;
+		return {
+			apiPort,
+			clientPort,
+			viteApiUrl: `http://localhost:${apiPort}`,
+		};
+	}
+
+	const clientPort = port ?? getNextLocaliasPort();
+	const apiPort = clientPort + 1;
+	const localhostPrefix = getLocalhostPrefix(
+		!localhost || localhost === defaultLocalhostPrefixArg ? args.name : localhost,
+	);
+	const clientHost = `${localhostPrefix}.local`;
+	const apiHost = `${localhostPrefix}-api.local`;
+	return {
+		apiHost,
+		apiPort,
+		clientHost,
+		clientPort,
+		viteApiUrl: `https://${apiHost}`,
+	};
+}
 
 void createScript(async function init() {
 	const dependencies = [
@@ -49,6 +131,7 @@ void createScript(async function init() {
 
 	console.log(style.header('create root'));
 	if (fs.existsSync(root)) throw new Error(`root "${root}" already exists`);
+	const clientServerNetwork = args.type === 'client-server' ? getClientServerNetworkConfig() : undefined;
 	disk.setRoot(root);
 	disk.createDir('.');
 	disk.copyFile({ from: assetFilePath('gitignore'), to: '.gitignore' });
@@ -87,14 +170,35 @@ void createScript(async function init() {
 			break;
 		case 'client-server':
 			disk.copyFile({ from: assetFilePath('AGENTS.client-server.md'), to: 'AGENTS.md' });
+			const network = clientServerNetwork!;
 			disk.writeFile(
 				'.env',
-				textBlock`
-                API_PORT=3001
-                CLIENT_PORT=3000
-                VITE_API_URL=http://localhost:3001
-            `,
+				network.clientHost
+					? textBlock`
+						API_PORT=${network.apiPort}
+						CLIENT_PORT=${network.clientPort}
+						CLIENT_HOST=${network.clientHost}
+						API_HOST=${network.apiHost}
+						VITE_API_URL=${network.viteApiUrl}
+					`
+					: textBlock`
+						API_PORT=${network.apiPort}
+						CLIENT_PORT=${network.clientPort}
+						VITE_API_URL=${network.viteApiUrl}
+					`,
 			);
+			if (network.clientHost) {
+				const agentsPath = disk.getAbsolutePath('AGENTS.md');
+				const agentsContent = fs.readFileSync(agentsPath, 'utf8');
+				disk.writeFile(
+					'AGENTS.md',
+					`${agentsContent}\n- Local dev hosts: use https://${network.clientHost} and https://${network.apiHost} via localias instead of localhost:${network.clientPort} and localhost:${network.apiPort}.\n`,
+				);
+
+				console.log(style.header('setup localias'));
+				cmd(`localias add ${network.clientHost} ${network.clientPort}`);
+				cmd(`localias add ${network.apiHost} ${network.apiPort}`);
+			}
 
 			console.log(style.header('create server'));
 			disk.copyDir({ from: assetFilePath('server'), to: 'server' });
