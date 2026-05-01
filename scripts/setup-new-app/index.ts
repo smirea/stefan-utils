@@ -133,7 +133,6 @@ void createScript(async function init() {
 				'@emotion/react',
 				'@emotion/styled',
 				'@phosphor-icons/react',
-				'vite-tsconfig-paths',
 				'@tailwindcss/vite',
 				'tailwindcss',
 			);

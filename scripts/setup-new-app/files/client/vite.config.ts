@@ -3,7 +3,6 @@ import { env } from 'node:process';
 // import MillionLint from "@million/lint";
 import react from '@vitejs/plugin-react';
 import { tanstackRouter } from '@tanstack/router-plugin/vite';
-import tsconfigPaths from 'vite-tsconfig-paths';
 import tailwindcss from '@tailwindcss/vite';
 
 if (!env.CLIENT_PORT) throw new Error('CLIENT_PORT is not set');
@@ -14,6 +13,9 @@ if (Number.isNaN(clientPort)) throw new Error('CLIENT_PORT must be a valid numbe
 
 // https://vite.dev/config/
 export default defineConfig({
+	resolve: {
+		tsconfigPaths: true,
+	},
 	server: {
 		port: clientPort,
 		strictPort: true,
@@ -26,7 +28,6 @@ export default defineConfig({
 		},
 	},
 	plugins: [
-		tsconfigPaths(),
 		tanstackRouter({
 			target: 'react',
 			autoCodeSplitting: true,
