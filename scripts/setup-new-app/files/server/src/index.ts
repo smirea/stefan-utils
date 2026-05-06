@@ -7,6 +7,7 @@ if (Number.isNaN(apiPort)) throw new Error('API_PORT must be a valid number');
 
 const server = Bun.serve({
 	development: true,
+	idleTimeout: 120,
 	port: apiPort,
 	routes: {
 		'/status': Response.json({ ok: true }),
