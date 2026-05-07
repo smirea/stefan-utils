@@ -59,6 +59,10 @@ const { args } = parseArgv({
 const root = path.join(args.path, args.name);
 const defaultClientPort = 3000;
 
+function shellQuote(value: string) {
+	return "'" + value.replaceAll("'", "'\\''") + "'";
+}
+
 function parsePort(port: string | undefined) {
 	if (!port) return;
 	const parsedPort = Number(port);
@@ -244,7 +248,8 @@ void createScript(async function init() {
 	cmd('git add -A');
 	cmd('git commit -m "initial setup with stefan-utils/scripts/setup-new-app"');
 	if (args.repo !== 'none') {
-		cmd(`gh repo create ${args.name} --${args.repo} --source=. --remote=origin`);
+		cmd(`gh repo create ${shellQuote(args.name)} --${args.repo} --source=. --remote=origin`);
 		cmd('git push -u origin master');
+		cmd(`git-invite-ai-to-repos --repos ${shellQuote(args.name)}`);
 	}
 });
