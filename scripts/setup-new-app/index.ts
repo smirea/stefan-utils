@@ -46,11 +46,7 @@ const { args } = parseArgv({
 		localhost: {
 			type: 'string',
 			optional: true,
-			description: 'localias host prefix for client-server apps, defaults to app name',
-		},
-		'no-localhost': {
-			type: 'boolean',
-			description: 'disable localias setup for client-server apps',
+			description: 'localias host prefix for client-server apps, defaults to app name; use "none" to disable',
 		},
 		port: {
 			type: 'string',
@@ -81,6 +77,7 @@ function getNextLocaliasPort() {
 
 function getLocalhostPrefix(value: string) {
 	const prefix = value.trim().toLowerCase();
+	if (prefix === 'none') return false;
 	if (!/^[a-z0-9-]+$/.test(prefix)) {
 		throw new Error('--localhost must contain only letters, numbers, and dashes');
 	}
@@ -89,8 +86,11 @@ function getLocalhostPrefix(value: string) {
 
 function getClientServerNetworkConfig() {
 	const port = parsePort(args.port);
-	const localhost = args.localhost as string | false | undefined;
-	if (localhost === false) {
+	const localhost = args.localhost;
+	const localhostPrefix = getLocalhostPrefix(
+		!localhost || localhost === defaultLocalhostPrefixArg ? args.name : localhost,
+	);
+	if (localhostPrefix === false) {
 		const clientPort = port ?? defaultClientPort;
 		const apiPort = clientPort + 1;
 		return {
@@ -102,9 +102,6 @@ function getClientServerNetworkConfig() {
 
 	const clientPort = port ?? getNextLocaliasPort();
 	const apiPort = clientPort + 1;
-	const localhostPrefix = getLocalhostPrefix(
-		!localhost || localhost === defaultLocalhostPrefixArg ? args.name : localhost,
-	);
 	const clientHost = `${localhostPrefix}.local`;
 	const apiHost = `${localhostPrefix}-api.local`;
 	return {
@@ -227,15 +224,11 @@ void createScript(async function init() {
 				'react',
 				'react-dom',
 				'vite',
-				'antd',
-				'@ant-design/icons',
 				'@types/react',
 				'@types/react-dom',
 				'@vitejs/plugin-react',
 				'@tanstack/react-router',
 				'@tanstack/router-plugin',
-				'@emotion/react',
-				'@emotion/styled',
 				'@phosphor-icons/react',
 				'@tailwindcss/vite',
 				'tailwindcss',
