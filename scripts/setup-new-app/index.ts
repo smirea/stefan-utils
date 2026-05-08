@@ -46,7 +46,8 @@ const { args } = parseArgv({
 		localhost: {
 			type: 'string',
 			optional: true,
-			description: 'localias host prefix for client-server apps, defaults to app name; use "none" to disable',
+			description:
+				'localias host prefix for client-server apps, defaults to app name; generated domains use .localhost; use "none" to disable',
 		},
 		port: {
 			type: 'string',
@@ -82,6 +83,9 @@ function getNextLocaliasPort() {
 function getLocalhostPrefix(value: string) {
 	const prefix = value.trim().toLowerCase();
 	if (prefix === 'none') return false;
+	if (prefix.endsWith('.local')) {
+		throw new Error('mDNS is shit, use .localhost bro trust me');
+	}
 	if (!/^[a-z0-9-]+$/.test(prefix)) {
 		throw new Error('--localhost must contain only letters, numbers, and dashes');
 	}
@@ -106,8 +110,8 @@ function getClientServerNetworkConfig() {
 
 	const clientPort = port ?? getNextLocaliasPort();
 	const apiPort = clientPort + 1;
-	const clientHost = `${localhostPrefix}.local`;
-	const apiHost = `${localhostPrefix}-api.local`;
+	const clientHost = `${localhostPrefix}.localhost`;
+	const apiHost = `${localhostPrefix}-api.localhost`;
 	return {
 		apiHost,
 		apiPort,
@@ -197,8 +201,8 @@ void createScript(async function init() {
 				);
 
 				console.log(style.header('setup localias'));
-				cmd(`localias add ${network.clientHost} ${network.clientPort}`);
-				cmd(`localias add ${network.apiHost} ${network.apiPort}`);
+				cmd(`localias set ${network.clientHost} ${network.clientPort}`);
+				cmd(`localias set ${network.apiHost} ${network.apiPort}`);
 			}
 
 			console.log(style.header('create server'));
