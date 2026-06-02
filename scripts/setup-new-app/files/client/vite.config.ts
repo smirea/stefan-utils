@@ -6,10 +6,12 @@ import { tanstackRouter } from '@tanstack/router-plugin/vite';
 import tailwindcss from '@tailwindcss/vite';
 
 if (!env.CLIENT_PORT) throw new Error('CLIENT_PORT is not set');
-if (!env.VITE_API_URL) throw new Error('VITE_API_URL is not set');
+if (!env.API_PORT) throw new Error('API_PORT is not set');
 
 const clientPort = Number(env.CLIENT_PORT);
+const apiPort = Number(env.API_PORT);
 if (Number.isNaN(clientPort)) throw new Error('CLIENT_PORT must be a valid number');
+if (Number.isNaN(apiPort)) throw new Error('API_PORT must be a valid number');
 const allowedHosts = env.CLIENT_HOST ? [env.CLIENT_HOST] : undefined;
 
 // https://vite.dev/config/
@@ -23,7 +25,7 @@ export default defineConfig({
 		strictPort: true,
 		proxy: {
 			'/api': {
-				target: env.VITE_API_URL,
+				target: `http://localhost:${apiPort}`,
 				changeOrigin: true,
 				secure: false,
 				rewrite: (path: string) => path.replace(/^\/api/, ''),

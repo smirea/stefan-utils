@@ -47,7 +47,7 @@ const { args } = parseArgv({
 			type: 'string',
 			optional: true,
 			description:
-				'localias host prefix for client-server apps, defaults to app name; generated domains use .localhost; use "none" to disable',
+				'localias host prefix for client-server apps, defaults to app name; generated host uses .localhost; use "none" to disable',
 		},
 		port: {
 			type: 'string',
@@ -104,20 +104,16 @@ function getClientServerNetworkConfig() {
 		return {
 			apiPort,
 			clientPort,
-			viteApiUrl: `http://localhost:${apiPort}`,
 		};
 	}
 
 	const clientPort = port ?? getNextLocaliasPort();
 	const apiPort = clientPort + 1;
 	const clientHost = `${localhostPrefix}.localhost`;
-	const apiHost = `${localhostPrefix}-api.localhost`;
 	return {
-		apiHost,
 		apiPort,
 		clientHost,
 		clientPort,
-		viteApiUrl: `https://${apiHost}`,
 	};
 }
 
@@ -183,13 +179,10 @@ void createScript(async function init() {
 						API_PORT=${network.apiPort}
 						CLIENT_PORT=${network.clientPort}
 						CLIENT_HOST=${network.clientHost}
-						API_HOST=${network.apiHost}
-						VITE_API_URL=${network.viteApiUrl}
 					`
 					: textBlock`
 						API_PORT=${network.apiPort}
 						CLIENT_PORT=${network.clientPort}
-						VITE_API_URL=${network.viteApiUrl}
 					`,
 			);
 			if (network.clientHost) {
@@ -197,12 +190,11 @@ void createScript(async function init() {
 				const agentsContent = fs.readFileSync(agentsPath, 'utf8');
 				disk.writeFile(
 					'AGENTS.md',
-					`${agentsContent}\n- Local dev hosts: use https://${network.clientHost} and https://${network.apiHost} via localias instead of localhost:${network.clientPort} and localhost:${network.apiPort}.\n`,
+					`${agentsContent}\n- Local dev host: use https://${network.clientHost} via localias instead of localhost:${network.clientPort}. API requests should go through the client-relative /api proxy.\n`,
 				);
 
 				console.log(style.header('setup localias'));
 				cmd(`localias set ${network.clientHost} ${network.clientPort}`);
-				cmd(`localias set ${network.apiHost} ${network.apiPort}`);
 			}
 
 			console.log(style.header('create server'));
