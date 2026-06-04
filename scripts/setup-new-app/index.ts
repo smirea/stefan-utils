@@ -33,7 +33,7 @@ const { args } = parseArgv({
 		type: {
 			type: 'string',
 			short: 't',
-			choices: ['node', 'client-server', 'swift'],
+			choices: ['node', 'client-server', 'swift', 'empty'],
 			default: 'client-server',
 		},
 		repo: {
@@ -148,11 +148,12 @@ void createScript(async function init() {
 	console.log(style.header('create root'));
 	if (fs.existsSync(root)) throw new Error(`root "${root}" already exists`);
 	const clientServerNetwork = args.type === 'client-server' ? getClientServerNetworkConfig() : undefined;
+	const hasBunScaffold = args.type !== 'swift' && args.type !== 'empty';
 	disk.setRoot(root);
 	disk.createDir('.');
 	if (args.type === 'swift') {
 		disk.copyFile({ from: assetFilePath('swift/.gitignore'), to: '.gitignore' });
-	} else {
+	} else if (hasBunScaffold) {
 		disk.copyFile({ from: assetFilePath('gitignore'), to: '.gitignore' });
 		disk.copyFile({ from: assetFilePath('tsconfig.json'), to: 'tsconfig.json' });
 		disk.copyFile({ from: assetFilePath('lefthook.yml'), to: '.lefthook.yml' });
@@ -165,7 +166,7 @@ void createScript(async function init() {
 	}
 	cmd.setCWD(root);
 
-	if (args.type !== 'swift') {
+	if (hasBunScaffold) {
 		disk.writeJsonFile('package.json', {
 			name: args.name,
 			private: true,
@@ -177,6 +178,9 @@ void createScript(async function init() {
 	}
 
 	switch (args.type) {
+		case 'empty':
+			disk.writeFile('README.md', 'the start of something exciting');
+			break;
 		case 'node':
 			disk.copyFile({ from: assetFilePath('AGENTS.node.md'), to: 'AGENTS.md' });
 			const src = path.join(root, 'src');
@@ -310,7 +314,7 @@ void createScript(async function init() {
 			throw new Error(`Invalid type: ${args.type}`);
 	}
 
-	if (args.type !== 'swift') {
+	if (hasBunScaffold) {
 		cmd('bun add ' + Array.from(new Set(dependencies)).sort().join(' '));
 	}
 
