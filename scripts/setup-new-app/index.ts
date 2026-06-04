@@ -33,7 +33,7 @@ const { args } = parseArgv({
 		type: {
 			type: 'string',
 			short: 't',
-			choices: ['node', 'client-server'],
+			choices: ['node', 'client-server', 'swift'],
 			default: 'client-server',
 		},
 		repo: {
@@ -62,6 +62,21 @@ const defaultClientPort = 3000;
 
 function shellQuote(value: string) {
 	return "'" + value.replaceAll("'", "'\\''") + "'";
+}
+
+function hasPathCommand(command: string) {
+	return (env.PATH ?? '').split(path.delimiter).some(dir => fs.existsSync(path.join(dir, command)));
+}
+
+function getInviteAiCommand(repo: string) {
+	if (hasPathCommand('git-invite-ai-to-repos')) {
+		return `git-invite-ai-to-repos --repos ${shellQuote(repo)}`;
+	}
+
+	const scriptPath = path.join(codePath, 'scripts', 'src', 'git-invite-ai-to-repos.ts');
+	if (fs.existsSync(scriptPath)) {
+		return `bun ${shellQuote(scriptPath)} --repos ${shellQuote(repo)}`;
+	}
 }
 
 function parsePort(port: string | undefined) {
@@ -135,25 +150,31 @@ void createScript(async function init() {
 	const clientServerNetwork = args.type === 'client-server' ? getClientServerNetworkConfig() : undefined;
 	disk.setRoot(root);
 	disk.createDir('.');
-	disk.copyFile({ from: assetFilePath('gitignore'), to: '.gitignore' });
-	disk.copyFile({ from: assetFilePath('tsconfig.json'), to: 'tsconfig.json' });
-	disk.copyFile({ from: assetFilePath('lefthook.yml'), to: '.lefthook.yml' });
-	disk.copyFile({
-		from: assetFilePath('vscode.code-workspace'),
-		to: args.name + '.code-workspace',
-	});
-	disk.copyFile({ from: assetFilePath('oxlint.json'), to: 'oxlint.json' });
-	disk.copyFile({ from: assetFilePath('.oxfmtrc.json'), to: '.oxfmtrc.json' });
+	if (args.type === 'swift') {
+		disk.copyFile({ from: assetFilePath('swift/.gitignore'), to: '.gitignore' });
+	} else {
+		disk.copyFile({ from: assetFilePath('gitignore'), to: '.gitignore' });
+		disk.copyFile({ from: assetFilePath('tsconfig.json'), to: 'tsconfig.json' });
+		disk.copyFile({ from: assetFilePath('lefthook.yml'), to: '.lefthook.yml' });
+		disk.copyFile({
+			from: assetFilePath('vscode.code-workspace'),
+			to: args.name + '.code-workspace',
+		});
+		disk.copyFile({ from: assetFilePath('oxlint.json'), to: 'oxlint.json' });
+		disk.copyFile({ from: assetFilePath('.oxfmtrc.json'), to: '.oxfmtrc.json' });
+	}
 	cmd.setCWD(root);
 
-	disk.writeJsonFile('package.json', {
-		name: args.name,
-		private: true,
-		scripts: {
-			lint: 'oxlint --fix && oxfmt',
-			test: 'bun test',
-		},
-	});
+	if (args.type !== 'swift') {
+		disk.writeJsonFile('package.json', {
+			name: args.name,
+			private: true,
+			scripts: {
+				lint: 'oxlint --fix && oxfmt',
+				test: 'bun test',
+			},
+		});
+	}
 
 	switch (args.type) {
 		case 'node':
@@ -234,11 +255,64 @@ void createScript(async function init() {
 				'tailwindcss',
 			);
 			break;
+		case 'swift':
+			disk.copyFile({ from: assetFilePath('swift/AGENTS.md'), to: 'AGENTS.md' });
+			disk.createDir('Sources/App');
+			disk.writeFile(
+				'Package.swift',
+				textBlock`
+					// swift-tools-version: 6.0
+					import PackageDescription
+
+					let package = Package(
+						name: "${args.name}",
+						platforms: [
+							.iOS(.v17),
+							.macOS(.v14),
+						],
+						products: [
+							.executable(name: "${args.name}", targets: ["App"]),
+						],
+						targets: [
+							.executableTarget(name: "App"),
+						]
+					)
+				`,
+			);
+			disk.writeFile(
+				'Sources/App/main.swift',
+				textBlock`
+					@main
+					struct App {
+						static func main() {
+							print("Hello, ${args.name}!")
+						}
+					}
+				`,
+			);
+			disk.writeFile(
+				'README.md',
+				textBlock`
+					# ${args.name}
+
+					Lean Swift starter.
+
+					## Commands
+
+					\`\`\`sh
+					swift build
+					swift run
+					\`\`\`
+				`,
+			);
+			break;
 		default:
 			throw new Error(`Invalid type: ${args.type}`);
 	}
 
-	cmd('bun add ' + Array.from(new Set(dependencies)).sort().join(' '));
+	if (args.type !== 'swift') {
+		cmd('bun add ' + Array.from(new Set(dependencies)).sort().join(' '));
+	}
 
 	cmd('git init');
 	cmd('git add -A');
@@ -246,6 +320,7 @@ void createScript(async function init() {
 	if (args.repo !== 'none') {
 		cmd(`gh repo create ${shellQuote(args.name)} --${args.repo} --source=. --remote=origin`);
 		cmd('git push -u origin master');
-		cmd(`git-invite-ai-to-repos --repos ${shellQuote(args.name)}`);
+		const inviteAiCommand = getInviteAiCommand(args.name);
+		if (inviteAiCommand) cmd(inviteAiCommand);
 	}
 });
