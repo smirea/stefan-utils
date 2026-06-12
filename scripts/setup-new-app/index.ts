@@ -33,7 +33,7 @@ const { args } = parseArgv({
 		type: {
 			type: 'string',
 			short: 't',
-			choices: ['node', 'client-server', 'swift', 'empty'],
+			choices: ['node', 'client-server', 'swift', 'empty', 'svelte'],
 			default: 'client-server',
 		},
 		repo: {
@@ -147,7 +147,8 @@ void createScript(async function init() {
 
 	console.log(style.header('create root'));
 	if (fs.existsSync(root)) throw new Error(`root "${root}" already exists`);
-	const clientServerNetwork = args.type === 'client-server' ? getClientServerNetworkConfig() : undefined;
+	const clientServerNetwork =
+		args.type === 'client-server' || args.type === 'svelte' ? getClientServerNetworkConfig() : undefined;
 	const hasBunScaffold = args.type !== 'swift' && args.type !== 'empty';
 	disk.setRoot(root);
 	disk.createDir('.');
@@ -259,6 +260,87 @@ void createScript(async function init() {
 				'tailwindcss',
 			);
 			break;
+		case 'svelte':
+			disk.copyFile({ from: assetFilePath('svelte/AGENTS.md'), to: 'AGENTS.md' });
+			disk.copyFile({ from: assetFilePath('svelte/gitignore'), to: '.gitignore' });
+			disk.copyFile({ from: assetFilePath('svelte/lefthook.yml'), to: '.lefthook.yml' });
+			disk.copyFile({ from: assetFilePath('svelte/oxlint.json'), to: 'oxlint.json' });
+			disk.copyFile({ from: assetFilePath('svelte/.oxfmtrc.json'), to: '.oxfmtrc.json' });
+			disk.copyFile({ from: assetFilePath('svelte/tsconfig.json'), to: 'tsconfig.json' });
+
+			const svelteNetwork = clientServerNetwork!;
+			const uiUrl = svelteNetwork.clientHost
+				? `http://${svelteNetwork.clientHost}`
+				: `http://localhost:${svelteNetwork.clientPort}`;
+			const serverUrl = `http://127.0.0.1:${svelteNetwork.apiPort}`;
+			disk.writeFile(
+				'.env',
+				textBlock`
+						# env-manager: ${args.name} | ${new Date().toISOString()}
+						# env-manager ts: packages/shared/src/env.ts
+
+						# {url}
+						UI_URL=${uiUrl}
+						# {url}
+						SERVER_URL=${serverUrl}
+						# {int}
+						UI_PORT=${svelteNetwork.clientPort}
+						# {int}
+						PORT=${svelteNetwork.apiPort}
+					`,
+			);
+			if (svelteNetwork.clientHost) {
+				const agentsPath = disk.getAbsolutePath('AGENTS.md');
+				const agentsContent = fs.readFileSync(agentsPath, 'utf8');
+				disk.writeFile(
+					'AGENTS.md',
+					`${agentsContent}\n# Local Dev Hosts\n\n- UI: ${svelteNetwork.clientHost} -> ${svelteNetwork.clientPort}\n`,
+				);
+
+				console.log(style.header('setup localias'));
+				cmd(`localias set ${svelteNetwork.clientHost} ${svelteNetwork.clientPort}`);
+			}
+
+			console.log(style.header('create server'));
+			disk.copyDir({ from: assetFilePath('svelte/apps/server'), to: 'apps/server' });
+
+			console.log(style.header('create ui'));
+			disk.copyDir({ from: assetFilePath('svelte/apps/ui'), to: 'apps/ui' });
+
+			console.log(style.header('create shared'));
+			disk.copyDir({ from: assetFilePath('svelte/packages/shared'), to: 'packages/shared' });
+			disk.updateJsonFile('package.json', data => ({
+				...data,
+				type: 'module',
+				workspaces: ['apps/*', 'packages/*'],
+				scripts: {
+					build: 'bun --filter @repo/ui build && bun --filter @repo/server typecheck',
+					dev: 'concurrently --raw -k -s first "bun --filter @repo/server dev" "bun --filter @repo/ui dev --host 127.0.0.1"',
+					format: 'oxfmt --write .',
+					lint: 'oxlint --fix && oxfmt --write .',
+					prepare: 'lefthook install',
+					'server:dev': 'bun --filter @repo/server dev',
+					'server:start': 'bun --filter @repo/server start',
+					'server:typecheck': 'bun --filter @repo/server typecheck',
+					start: 'bun --filter @repo/server start',
+					test: 'bun test --pass-with-no-tests',
+					typecheck: 'bun --filter @repo/ui check && bun --filter @repo/server typecheck',
+					'ui:build': 'bun --filter @repo/ui build',
+					'ui:check': 'bun --filter @repo/ui check',
+					'ui:dev': 'bun --filter @repo/ui dev --host 127.0.0.1',
+					'ui:preview': 'bun --filter @repo/ui preview',
+				},
+				devDependencies: {
+					'@types/node': '^24.0.0',
+					'@types/bun': '^1.3.14',
+					concurrently: '^9.2.1',
+					lefthook: '^2.1.8',
+					oxfmt: '^0.51.0',
+					oxlint: '^1.66.0',
+					typescript: '^6.0.3',
+				},
+			}));
+			break;
 		case 'swift':
 			disk.copyFile({ from: assetFilePath('swift/AGENTS.md'), to: 'AGENTS.md' });
 			disk.createDir('Sources/App');
@@ -314,11 +396,17 @@ void createScript(async function init() {
 			throw new Error(`Invalid type: ${args.type}`);
 	}
 
-	if (hasBunScaffold) {
+	if (args.type === 'svelte') {
+		cmd('bun install --ignore-scripts');
+	} else if (hasBunScaffold) {
 		cmd('bun add ' + Array.from(new Set(dependencies)).sort().join(' '));
 	}
 
 	cmd('git init');
+	if (args.type === 'svelte') {
+		cmd('bun run prepare');
+		cmd('bun run lint');
+	}
 	cmd('git add -A');
 	cmd('git commit -m "initial setup with stefan-utils/scripts/setup-new-app"');
 	if (args.repo !== 'none') {
