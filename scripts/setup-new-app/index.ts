@@ -279,14 +279,10 @@ void createScript(async function init() {
 						# env-manager: ${args.name} | ${new Date().toISOString()}
 						# env-manager ts: packages/shared/src/env.ts
 
-						# {url}
-						UI_URL=${uiUrl}
-						# {url}
-						SERVER_URL=${serverUrl}
-						# {int}
-						UI_PORT=${svelteNetwork.clientPort}
-						# {int}
-						PORT=${svelteNetwork.apiPort}
+						UI_URL=${uiUrl} # {url}
+						SERVER_URL=${serverUrl} # {url}
+						UI_PORT=${svelteNetwork.clientPort} # {int}
+						PORT=${svelteNetwork.apiPort} # {int}
 					`,
 			);
 			if (svelteNetwork.clientHost) {
