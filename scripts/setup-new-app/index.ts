@@ -133,16 +133,7 @@ function getClientServerNetworkConfig() {
 }
 
 void createScript(async function init() {
-	const dependencies = [
-		'@types/bun',
-		'lodash',
-		'typescript',
-		'@typescript/native-preview',
-		'oxfmt',
-		'oxlint',
-		'lefthook',
-		'kill-port-process',
-	];
+	const dependencies = ['@types/bun', 'lodash', 'typescript@rc', 'oxfmt', 'oxlint', 'lefthook', 'kill-port-process'];
 	const assetFilePath = (file: string) => path.join(__dirname, 'files', file);
 
 	console.log(style.header('create root'));
@@ -333,7 +324,7 @@ void createScript(async function init() {
 					lefthook: '^2.1.8',
 					oxfmt: '^0.51.0',
 					oxlint: '^1.66.0',
-					typescript: '^6.0.3',
+					typescript: '^7.0.1-rc',
 				},
 			}));
 			break;
