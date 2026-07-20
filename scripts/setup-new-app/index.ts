@@ -133,7 +133,7 @@ function getClientServerNetworkConfig() {
 }
 
 void createScript(async function init() {
-	const dependencies = ['@types/bun', 'lodash', 'typescript@rc', 'oxfmt', 'oxlint', 'lefthook', 'kill-port-process'];
+	const dependencies = ['@types/bun', 'lodash', 'typescript', 'oxfmt', 'oxlint', 'lefthook', 'kill-port-process'];
 	const assetFilePath = (file: string) => path.join(__dirname, 'files', file);
 
 	console.log(style.header('create root'));
@@ -318,13 +318,15 @@ void createScript(async function init() {
 					'ui:preview': 'bun --filter @repo/ui preview',
 				},
 				devDependencies: {
-					'@types/node': '^24.0.0',
+					'@typescript/native': 'npm:typescript@^7.0.2',
+					'@types/node': '^26.1.1',
 					'@types/bun': '^1.3.14',
-					concurrently: '^9.2.1',
-					lefthook: '^2.1.8',
-					oxfmt: '^0.51.0',
-					oxlint: '^1.66.0',
-					typescript: '^7.0.1-rc',
+					concurrently: '^10.0.3',
+					lefthook: '^2.1.10',
+					oxfmt: '^0.59.0',
+					oxlint: '^1.74.0',
+					// svelte-check still needs the TypeScript 6 programmatic API.
+					typescript: '^6.0.3',
 				},
 			}));
 			break;
