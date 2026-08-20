@@ -31,18 +31,14 @@
 		<div class="intro">
 			<p class="eyebrow">SvelteKit + Bun</p>
 			<h1>Start here.</h1>
-			<p class="lede">
-				A tiny Svelte route, Tailwind v4 theme tokens, and a Bun API server are wired together.
-			</p>
+			<p class="lede">A tiny Svelte route, Tailwind v4 theme tokens, and a Bun API server are wired together.</p>
 		</div>
 
 		<div class="actions">
 			<button type="button" class="primary" onclick={() => (theme = theme === 'dark' ? 'light' : 'dark')}>
 				{theme === 'dark' ? 'Light' : 'Dark'} theme
 			</button>
-			<button type="button" onclick={() => void status.refetch()}>
-				Ping server
-			</button>
+			<button type="button" onclick={() => void status.refetch()}> Ping server </button>
 		</div>
 
 		<div class="status">
