@@ -9,16 +9,18 @@
 		"preview": "bun --env-file=../../.env --env-file=../../.env.local --bun vite preview"
 	},
 	"dependencies": {
-		"@sveltejs/adapter-static": "^3.0.9",
-		"@sveltejs/kit": "^2.48.4",
-		"@tanstack/svelte-query": "^6.1.33",
-		"svelte": "^5.41.3",
-		"vite": "^7.1.12"
+		"@sveltejs/adapter-static": "^3.0.10",
+		"@sveltejs/kit": "^2.70.3",
+		"@sveltejs/vite-plugin-svelte": "^7.3.0",
+		"@tanstack/svelte-query": "^6.1.38",
+		"es-toolkit": "^1.51.0",
+		"svelte": "^5.56.9",
+		"vite": "^8.2.2"
 	},
 	"devDependencies": {
-		"@tailwindcss/vite": "^4.3.0",
-		"svelte-check": "^4.3.3",
-		"tailwindcss": "^4.3.0",
-		"typescript": "^7.0.1-rc"
+		"@tailwindcss/vite": "^4.3.3",
+		"svelte-check": "^4.7.6",
+		"tailwindcss": "^4.3.3",
+		"typescript": "^7.0.2"
 	}
 }
