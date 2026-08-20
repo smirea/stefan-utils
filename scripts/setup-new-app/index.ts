@@ -154,6 +154,10 @@ void createScript(async function init() {
 	disk.createDir('.');
 	if (args.type === 'swift') {
 		disk.copyFile({ from: assetFilePath('swift/.gitignore'), to: '.gitignore' });
+		disk.copyFile({
+			from: assetFilePath('swift/vscode.code-workspace'),
+			to: args.name + '.code-workspace',
+		});
 	} else if (hasBunScaffold) {
 		disk.copyFile({ from: assetFilePath('gitignore'), to: '.gitignore' });
 		disk.copyFile({ from: assetFilePath('tsconfig.json'), to: 'tsconfig.json' });
@@ -267,6 +271,10 @@ void createScript(async function init() {
 			disk.copyFile({ from: assetFilePath('svelte/oxlint.json'), to: 'oxlint.json' });
 			disk.copyFile({ from: assetFilePath('svelte/.oxfmtrc.json'), to: '.oxfmtrc.json' });
 			disk.copyFile({ from: assetFilePath('svelte/tsconfig.json'), to: 'tsconfig.json' });
+			disk.copyFile({
+				from: assetFilePath('svelte/vscode.code-workspace'),
+				to: args.name + '.code-workspace',
+			});
 
 			const svelteNetwork = clientServerNetwork!;
 			const uiUrl = svelteNetwork.clientHost
