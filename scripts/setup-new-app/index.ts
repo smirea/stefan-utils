@@ -349,7 +349,19 @@ void createScript(async function init() {
 			break;
 		case 'swift':
 			disk.copyFile({ from: assetFilePath('swift/AGENTS.md'), to: 'AGENTS.md' });
-			disk.createDir('Sources/App');
+			disk.copyDir({ from: assetFilePath('swift/Sources'), to: 'Sources' });
+			disk.copyDir({ from: assetFilePath('swift/App.xcodeproj'), to: 'App.xcodeproj' });
+			disk.copyDir({ from: assetFilePath('swift/scripts'), to: 'scripts' });
+			const bundleName = args.name.toLowerCase().replace(/[^a-z0-9-]/g, '-');
+			const bundleId = `com.stefan.${bundleName}`;
+			for (const file of ['App.xcodeproj/project.pbxproj', 'scripts/open']) {
+				const template = fs.readFileSync(disk.getAbsolutePath(file), 'utf8');
+				disk.writeFile(
+					file,
+					template.replaceAll('__APP_NAME__', () => JSON.stringify(args.name)).replaceAll('__BUNDLE_ID__', bundleId),
+				);
+			}
+			fs.chmodSync(disk.getAbsolutePath('scripts/open'), 0o755);
 			disk.writeFile(
 				'Package.swift',
 				textBlock`
@@ -357,13 +369,13 @@ void createScript(async function init() {
 					import PackageDescription
 
 					let package = Package(
-						name: "${args.name}",
+						name: ${JSON.stringify(args.name)},
 						platforms: [
 							.iOS(.v17),
 							.macOS(.v14),
 						],
 						products: [
-							.executable(name: "${args.name}", targets: ["App"]),
+							.executable(name: ${JSON.stringify(args.name)}, targets: ["App"]),
 						],
 						targets: [
 							.executableTarget(name: "App"),
@@ -372,29 +384,26 @@ void createScript(async function init() {
 				`,
 			);
 			disk.writeFile(
-				'Sources/App/main.swift',
-				textBlock`
-					@main
-					struct App {
-						static func main() {
-							print("Hello, ${args.name}!")
-						}
-					}
-				`,
-			);
-			disk.writeFile(
 				'README.md',
 				textBlock`
 					# ${args.name}
 
-					Lean Swift starter.
+					SwiftUI app for iOS 17+ and macOS 14+, with a shared Xcode scheme and simulator launcher.
 
 					## Commands
 
 					\`\`\`sh
-					swift build
-					swift run
+					./scripts/open
+					./scripts/open "iPhone 17" # optional device name or UDID
 					\`\`\`
+
+					Requires Xcode 16 or newer and an installed iOS simulator runtime.
+					The launcher builds, boots an iPhone, installs the app, and opens Device Hub or Simulator.app.
+					It remembers your selected device locally and creates a simulator if needed.
+
+					Edit \`Sources/App\`, then rerun \`./scripts/open\`. Build logs are saved in \`DerivedData/simulator-build.log\`.
+					Open \`App.xcodeproj\` and select the \`App\` scheme to debug in Xcode.
+					For macOS, use \`swift build\` / \`swift run\`, or run the Xcode scheme with My Mac selected.
 				`,
 			);
 			break;
