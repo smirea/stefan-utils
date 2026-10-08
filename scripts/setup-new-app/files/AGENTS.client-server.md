@@ -3,12 +3,12 @@
 - Tooling: Bun + TypeScript
 - Server: Bun.serve API
 - Client: React + Vite + TanStack Router
-- UI: Tailwind CSS (enabled in client/src/index.css)
+- UI: Tailwind CSS (enabled in **WEB_DIRECTORY**/src/index.css)
 - Linting and Hooks: Oxlint + Lefthook
 
 # Structure and commands
 
-- `client/` owns React, routes, styles, and Vite. `server/` owns the Bun API. `shared/` holds environment-independent types and contracts. Read each folder's `AGENTS.md` before changing it.
+- `__WEB_DIRECTORY__/` owns React, routes, styles, and Vite. `server/` owns the Bun API. `shared/` holds environment-independent types and contracts. Read each folder's `AGENTS.md` before changing it.
 - `bun run start` runs client and server; `start:client` and `start:server` run them separately. Browser API calls use the client-relative `/api` proxy.
 - A `monorepo-swift` scaffold also has `app-ios/` with native instructions and its own launcher. See that folder's docs.
 

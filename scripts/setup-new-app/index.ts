@@ -280,23 +280,24 @@ void createScript(async function init() {
 		case 'monorepo-swift':
 			const network = clientServerNetwork!;
 			const hasIos = args.type === 'monorepo-swift';
-			disk.copyFile({ from: assetFilePath('AGENTS.client-server.md'), to: 'AGENTS.md' });
+			const webDirectory = hasIos ? 'app-web' : 'client';
 			for (const directory of ['server', 'shared', 'client']) {
-				disk.copyDir({ from: assetFilePath(directory), to: directory });
+				disk.copyDir({ from: assetFilePath(directory), to: directory === 'client' ? webDirectory : directory });
 			}
+			disk.updateJsonFile(path.join(webDirectory, 'package.json'), data => ({ ...data, name: webDirectory }));
 			disk.writeFile(
 				'.env',
 				textBlock`
 					# env-manager: ${args.name}
 					# env-manager local:true
-					# env-manager target: client format=ts
-					# env-manager target: server format=ts
-					${hasIos ? '# env-manager target: app-ios format=swift' : ''}
+					# env-manager target: ${webDirectory} format=ts path=.env.local generate=src/env.ts
+					# env-manager target: server format=ts path=.env.local generate=src/env.ts
+					${hasIos ? '# env-manager target: app-ios format=swift path=Config/LocalSecrets.xcconfig' : ''}
 
-					# env-manager targets: ${hasIos ? 'client,app-ios' : 'client'}
+					# env-manager targets: ${hasIos ? `${webDirectory},app-ios` : webDirectory}
 					API_URL=http://127.0.0.1:${network.apiPort} # {url}
 
-					# env-manager targets: client
+					# env-manager targets: ${webDirectory}
 					CLIENT_PORT=${network.clientPort} # {int:min(1),max(65535)}
 					CLIENT_HOST=${network.clientHost ?? ''} # {optional string}
 
@@ -306,11 +307,11 @@ void createScript(async function init() {
 			);
 			disk.updateJsonFile('package.json', data => ({
 				...data,
-				workspaces: ['server', 'client'],
+				workspaces: ['server', webDirectory],
 				scripts: {
 					...data.scripts,
 					start: 'concurrently --raw -k -s first "bun run start:server" "bun run start:client"',
-					'start:client': 'bun run --cwd client start',
+					'start:client': `bun run --cwd ${webDirectory} start`,
 					'start:server': 'bun run --cwd server start',
 					...(hasIos ? { 'start:ios': 'bun app-ios/run' } : {}),
 					dev: 'bun run start',
@@ -319,7 +320,10 @@ void createScript(async function init() {
 					'env:generate': 'env-manager gen --local',
 				},
 			}));
-			disk.copyFile({ from: assetFilePath('README.client-server.md'), to: 'README.md' });
+			for (const file of ['README', 'AGENTS']) {
+				const template = fs.readFileSync(assetFilePath(`${file}.client-server.md`), 'utf8');
+				disk.writeFile(`${file}.md`, template.replaceAll('__WEB_DIRECTORY__', webDirectory));
+			}
 			if (hasIos) {
 				scaffoldSwift('app-ios');
 				for (const file of ['README.md', 'AGENTS.md']) {

@@ -1,6 +1,6 @@
 # Client and server
 
-Bun API in `server/`, React + Vite + TanStack Router in `client/`, and shared TypeScript contracts in `shared/`. Each app owns its entry points and generated environment reader; shared code should stay independent of app configuration.
+Bun API in `server/`, React + Vite + TanStack Router in `__WEB_DIRECTORY__/`, and shared TypeScript contracts in `shared/`. Each app owns its entry points and generated environment reader; shared code should stay independent of app configuration.
 
 ```sh
 bun install
@@ -14,7 +14,7 @@ The client proxies `/api/*` to the API and removes the `/api` prefix. For exampl
 
 ## Environment
 
-`env-manager` manages one root `.env` schema with directory targets. The root `.env.local` is the only place to edit local values. Run `env-manager gen --local` after editing either file; it generates `client/.env.local`, `server/.env.local`, and each target's `src/env.ts`. Commands from child directories find the owning root. There are no independent child schemas.
+`env-manager` manages one root `.env` schema with directory targets. The root `.env.local` is the only place to edit local values. Run `env-manager gen --local` after editing either file; it generates `__WEB_DIRECTORY__/.env.local`, `server/.env.local`, and each target's `src/env.ts`. Commands from child directories find the owning root. There are no independent child schemas.
 
 The scaffold runs `env-manager init --local` and `env-manager gen --local`. Persistent `local:true` keeps setup offline and avoids automatic Git commits. See `env-manager --help` for schema types, target selection, and opting into remote storage with `--no-local`.
 
