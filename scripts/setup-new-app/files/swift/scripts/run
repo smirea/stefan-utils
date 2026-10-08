@@ -4,8 +4,8 @@ import { closeSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync }
 import { basename, dirname, join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 
-const root = resolve(import.meta.dir, existsSync(join(import.meta.dir, "App.xcodeproj")) ? "." : "..");
-const runCommand = `./${root === import.meta.dir ? "run" : "scripts/run"}`;
+const root = resolve(import.meta.dir, "..");
+const runCommand = "./scripts/run";
 const children = new Set<Bun.Subprocess>();
 const { values } = parseArgs({
     options: {

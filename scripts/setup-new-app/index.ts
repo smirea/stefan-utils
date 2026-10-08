@@ -149,7 +149,7 @@ function getClientServerNetworkConfig() {
 
 function scaffoldSwift(directory = '.') {
 	const target = (file: string) => path.join(directory, file);
-	const runner = directory === '.' ? 'scripts/run' : 'run';
+	const runner = 'scripts/run';
 	const hasConfig = directory !== '.';
 	disk.createDir(directory);
 	for (const file of ['.gitignore', 'AGENTS.md', 'README.md', 'Package.swift']) {
@@ -157,9 +157,8 @@ function scaffoldSwift(directory = '.') {
 		disk.writeFile(
 			target(file),
 			template
-				.replaceAll('__APP_NAME__', () => args.name)
-				.replaceAll('__PACKAGE_NAME__', () => JSON.stringify(args.name))
-				.replaceAll('__RUN_COMMAND__', './' + runner),
+				.replaceAll('{{APP_NAME}}', () => args.name)
+				.replaceAll('__PACKAGE_NAME__', () => JSON.stringify(args.name)),
 		);
 	}
 	for (const folder of ['Sources', 'App.xcodeproj']) {
@@ -187,6 +186,13 @@ function scaffoldSwift(directory = '.') {
 			.replaceAll('__CONFIG_BUILD_SETTINGS__', hasConfig ? 'INFOPLIST_FILE = Config/Info.plist;' : ''),
 	);
 	if (directory !== '.') {
+		for (const file of ['README', 'AGENTS']) {
+			const content = fs.readFileSync(disk.getAbsolutePath(target(`${file}.md`)), 'utf8');
+			disk.writeFile(
+				target(`${file}.md`),
+				content + fs.readFileSync(assetFilePath(`monorepo-swift/${file}.ios.md`), 'utf8'),
+			);
+		}
 		disk.copyDir({ from: assetFilePath('monorepo-swift/Config'), to: target('Config') });
 		disk.copyFile({
 			from: assetFilePath('monorepo-swift/Environment.swift'),
@@ -313,7 +319,7 @@ void createScript(async function init() {
 					start: 'concurrently --raw -k -s first "bun run start:server" "bun run start:client"',
 					'start:client': `bun run --cwd ${webDirectory} start`,
 					'start:server': 'bun run --cwd server start',
-					...(hasIos ? { 'start:ios': 'bun app-ios/run' } : {}),
+					...(hasIos ? { 'start:ios': 'bun app-ios/scripts/run' } : {}),
 					dev: 'bun run start',
 					'client:dev': 'bun run start:client',
 					'server:dev': 'bun run start:server',

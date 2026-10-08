@@ -1,22 +1,42 @@
-# **APP_NAME**
+# {{APP_NAME}}
 
 SwiftUI app for iOS 17+ and macOS 14+. Requires Bun and Xcode 16 or newer.
 
+## Run
+
+From this folder:
+
 ```sh
-__RUN_COMMAND__                       # select a target; watch by default
-__RUN_COMMAND__ --targets             # list targets; * marks the default
-__RUN_COMMAND__ -t simulator
-__RUN_COMMAND__ -t "iPhone 17"         # name or identifier
-__RUN_COMMAND__ -t mac
-__RUN_COMMAND__ --no-watch            # build and launch once
+./scripts/run
 ```
 
-Edit `Sources/App`; saving rebuilds and relaunches the app. Build errors leave the watcher running. Stop with Ctrl-C. Temporary app state resets after relaunch.
+The launcher selects a target and watches for changes. Edit `Sources/App` to rebuild and relaunch. Stop with Ctrl-C; use `--no-watch` for a single launch. Build errors leave the watcher running.
 
-Target selection prefers a connected iOS device, then a booted simulator, available simulator, or My Mac. Set `SWIFT_RUN_DEFAULT_TARGET` to override; `-t` takes precedence. Duplicate simulator names prefer a booted instance, then the newest runtime. Use an identifier for an exact selection. Install simulator runtimes in Xcode's settings.
+## Choose a target
 
-Physical devices need Xcode pairing, Developer Mode, and an unlocked screen. Configure automatic signing in Xcode, pass `--team YOUR_TEAM_ID`, or set `SWIFT_RUN_DEVELOPMENT_TEAM`.
+```sh
+./scripts/run --targets
+./scripts/run -t simulator
+./scripts/run -t "iPhone 17"
+./scripts/run -t mac
+```
 
-Open `App.xcodeproj` and select the shared `App` scheme to debug. `swift build` checks the shared code on macOS; use the launcher for bundled resources and simulator builds. Logs live in `DerivedData/device/build.log`, `DerivedData/simulator/build.log`, or `DerivedData/mac/build.log`.
+`--targets` lists names and identifiers; `*` marks the default. Selection prefers a connected iOS device, then a booted simulator, an available simulator, or My Mac.
 
-When this folder is part of `monorepo-swift`, environment configuration belongs to the parent `.env` and `.env.local`. Run `env-manager gen --local` from the monorepo or this folder to regenerate `Config/LocalSecrets.xcconfig`. `Config/Base.xcconfig` includes it, and `Config/Info.plist` exposes `API_URL` through `AppEnvironment.apiURL`. These values are bundled into the app; keep server secrets in the server target.
+Set `SWIFT_RUN_DEFAULT_TARGET` to choose a default; `-t` overrides it. For duplicate simulator names, use an identifier to select exactly. Install simulator runtimes in Xcode's settings.
+
+## Device signing
+
+Pair the device in Xcode, enable Developer Mode, and unlock it. Configure automatic signing in Xcode or pass your team:
+
+```sh
+./scripts/run --team YOUR_TEAM_ID
+```
+
+You can also set `SWIFT_RUN_DEVELOPMENT_TEAM`.
+
+## Debug and build
+
+Open `App.xcodeproj` and select the shared `App` scheme to debug. `swift build` checks the package on macOS; use the launcher for simulator builds and bundled resources.
+
+Build logs are in `DerivedData/<target>/build.log`, where `<target>` is `device`, `simulator`, or `mac`. Temporary app state resets after relaunch.
