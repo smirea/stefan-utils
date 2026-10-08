@@ -354,14 +354,13 @@ void createScript(async function init() {
 			disk.copyDir({ from: assetFilePath('swift/scripts'), to: 'scripts' });
 			const bundleName = args.name.toLowerCase().replace(/[^a-z0-9-]/g, '-');
 			const bundleId = `com.stefan.${bundleName}`;
-			for (const file of ['App.xcodeproj/project.pbxproj', 'scripts/open']) {
-				const template = fs.readFileSync(disk.getAbsolutePath(file), 'utf8');
-				disk.writeFile(
-					file,
-					template.replaceAll('__APP_NAME__', () => JSON.stringify(args.name)).replaceAll('__BUNDLE_ID__', bundleId),
-				);
-			}
-			fs.chmodSync(disk.getAbsolutePath('scripts/open'), 0o755);
+			const projectFile = 'App.xcodeproj/project.pbxproj';
+			const template = fs.readFileSync(disk.getAbsolutePath(projectFile), 'utf8');
+			disk.writeFile(
+				projectFile,
+				template.replaceAll('__APP_NAME__', () => JSON.stringify(args.name)).replaceAll('__BUNDLE_ID__', bundleId),
+			);
+			fs.chmodSync(disk.getAbsolutePath('scripts/run'), 0o755);
 			disk.writeFile(
 				'Package.swift',
 				textBlock`
@@ -388,22 +387,30 @@ void createScript(async function init() {
 				textBlock`
 					# ${args.name}
 
-					SwiftUI app for iOS 17+ and macOS 14+, with a shared Xcode scheme and simulator launcher.
+					SwiftUI app for iOS 17+ and macOS 14+, with a shared Xcode scheme and Bun TypeScript launcher.
 
 					## Commands
 
 					\`\`\`sh
-					./scripts/open
-					./scripts/open "iPhone 17" # optional device name or UDID
+					./scripts/run                      # auto-select; watch by default
+					./scripts/run --targets            # list targets; * marks the default
+					./scripts/run -t simulator
+					./scripts/run -t "iPhone 17"        # name or identifier
+					./scripts/run -t mac
+					./scripts/run --no-watch           # build and launch once
 					\`\`\`
 
-					Requires Xcode 16 or newer and an installed iOS simulator runtime.
-					The launcher builds, boots an iPhone, installs the app, and opens Device Hub or Simulator.app.
-					It remembers your selected device locally and creates a simulator if needed.
+					Requires Xcode 16 or newer and Bun. Install an iOS simulator runtime for simulator testing.
+					Without a target flag, the launcher prefers a connected iOS device, then a booted simulator, then an available simulator, then My Mac.
+					Set \`SWIFT_RUN_DEFAULT_TARGET\` to a target name, identifier, \`simulator\`, or \`mac\` to override that default; \`-t\` takes precedence.
+					Duplicate simulator names prefer a booted instance, then the newest runtime. Use an identifier for an exact selection.
 
-					Edit \`Sources/App\`, then rerun \`./scripts/open\`. Build logs are saved in \`DerivedData/simulator-build.log\`.
+					Edit \`Sources/App\`; saving changes rebuilds and restarts the app automatically. \`--watch\` / \`-w\` are enabled by default; stop with Ctrl-C.
+					Build errors leave the watcher running. Fix the error and save again. Temporary app state resets after relaunch.
+					Build logs are saved in \`DerivedData/device/build.log\`, \`DerivedData/simulator/build.log\`, or \`DerivedData/mac/build.log\`.
+					For a physical device, pair it in Xcode, enable Developer Mode, and keep it unlocked. Configure automatic signing in Xcode or pass \`--team YOUR_TEAM_ID\` (also \`SWIFT_RUN_DEVELOPMENT_TEAM\`).
 					Open \`App.xcodeproj\` and select the \`App\` scheme to debug in Xcode.
-					For macOS, use \`swift build\` / \`swift run\`, or run the Xcode scheme with My Mac selected.
+					\`swift build\` checks the shared code on macOS; \`./scripts/run -t mac\` launches the bundled app.
 				`,
 			);
 			break;

@@ -7,9 +7,10 @@
 
 # Development
 
-- Run `./scripts/open` to build, install, and launch the app on an iPhone simulator. It opens Device Hub on Xcode 27 or Simulator.app on earlier Xcode versions.
-- Pass a device name or UDID to switch: `./scripts/open "iPhone 17"`. The selection is remembered locally in `DerivedData/simulator-udid`; use that UDID for subsequent `xcrun simctl` commands.
-- The launcher selects an available iPhone automatically, or creates one using an installed iOS runtime. If no runtime is installed, add one in Xcode's settings.
+- Run `./scripts/run` to build, install, and launch the app, with automatic rebuild and relaunch after saving. Requires Bun and Xcode. Stop with Ctrl-C, or use `--no-watch` for one launch.
+- Use `./scripts/run --targets` to list devices and simulators; `*` marks the effective default. Select with `-t simulator`, `-t mac`, or `-t "iPhone 17"` (also accepts an identifier). It opens Device Hub on Xcode 27 or Simulator.app on earlier Xcode versions.
+- Selection precedence is `-t` / `--target`, then `SWIFT_RUN_DEFAULT_TARGET`, then a connected iOS device, booted simulator, available simulator, or My Mac. Duplicate simulator names prefer a booted instance, then the newest runtime; use an identifier to select exactly. Add simulator runtimes in Xcode's settings.
+- Physical devices need Xcode pairing, Developer Mode, and an unlocked screen. Configure automatic signing in Xcode, pass `--team`, or set `SWIFT_RUN_DEVELOPMENT_TEAM`.
 - Edit SwiftUI code and resources in `Sources/App`; Xcode picks up new files automatically. Open `App.xcodeproj` and use the shared `App` scheme for debugging.
-- Rerun `./scripts/open` after changes. Build output is in `DerivedData/simulator-build.log`. Use `xcrun simctl io <UDID> screenshot /tmp/app.png` to inspect the screen.
+- Build errors leave the watcher running; fix the error and save again. Build output is in `DerivedData/device/build.log`, `DerivedData/simulator/build.log`, or `DerivedData/mac/build.log`. Use `xcrun simctl io <UDID> screenshot /tmp/app.png` to inspect the screen.
 - `swift build` checks the shared code on macOS. Use the Xcode project for simulator builds and bundled resources; `swift run` launches the macOS executable.
