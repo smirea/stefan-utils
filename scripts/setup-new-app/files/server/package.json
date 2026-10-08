@@ -1,7 +1,9 @@
 {
 	"name": "server",
 	"private": true,
+	"type": "module",
 	"scripts": {
-		"dev": "bun --watch --no-clear-screen --elide-lines=0 src/index.ts"
+		"start": "bun --watch --no-clear-screen --elide-lines=0 src/index.ts",
+		"dev": "bun run start"
 	}
 }

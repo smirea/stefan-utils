@@ -25,7 +25,7 @@ function normalizeArgv(argv: string[]) {
 }
 
 const { args } = parseArgv({
-	// description: 'Setup a new app',
+	description: 'Scaffold an app from the shared templates',
 	args: normalizeArgv(process.argv.slice(2)),
 	options: {
 		name: { type: 'string', short: 'n', description: 'folder and app name' },
@@ -33,7 +33,7 @@ const { args } = parseArgv({
 		type: {
 			type: 'string',
 			short: 't',
-			choices: ['node', 'client-server', 'swift', 'empty', 'svelte'],
+			choices: ['node', 'client-server', 'monorepo-swift', 'swift', 'empty', 'svelte'],
 			default: 'client-server',
 		},
 		repo: {
@@ -64,6 +64,8 @@ const { args } = parseArgv({
 
 const root = path.join(args.path, args.name);
 const defaultClientPort = 3000;
+const assetFilePath = (file: string) => path.join(__dirname, 'files', file);
+const hasClientServer = args.type === 'client-server' || args.type === 'monorepo-swift';
 
 function shellQuote(value: string) {
 	return "'" + value.replaceAll("'", "'\\''") + "'";
@@ -147,6 +149,54 @@ function getClientServerNetworkConfig() {
 	};
 }
 
+function scaffoldSwift(directory = '.') {
+	const target = (file: string) => path.join(directory, file);
+	const runner = directory === '.' ? 'scripts/run' : 'run';
+	const hasConfig = directory !== '.';
+	disk.createDir(directory);
+	for (const file of ['.gitignore', 'AGENTS.md', 'README.md', 'Package.swift']) {
+		const template = fs.readFileSync(assetFilePath('swift/' + file), 'utf8');
+		disk.writeFile(
+			target(file),
+			template
+				.replaceAll('__APP_NAME__', () => args.name)
+				.replaceAll('__PACKAGE_NAME__', () => JSON.stringify(args.name))
+				.replaceAll('__RUN_COMMAND__', './' + runner),
+		);
+	}
+	for (const folder of ['Sources', 'App.xcodeproj']) {
+		disk.copyDir({ from: assetFilePath('swift/' + folder), to: target(folder) });
+	}
+	disk.createDir(target(path.dirname(runner)));
+	disk.copyFile({ from: assetFilePath('swift/scripts/run'), to: target(runner) });
+	fs.chmodSync(disk.getAbsolutePath(target(runner)), 0o755);
+	const projectFile = target('App.xcodeproj/project.pbxproj');
+	const template = fs.readFileSync(disk.getAbsolutePath(projectFile), 'utf8');
+	const bundleName = args.name.toLowerCase().replace(/[^a-z0-9-]/g, '-');
+	disk.writeFile(
+		projectFile,
+		template
+			.replaceAll('__APP_NAME__', () => JSON.stringify(args.name))
+			.replaceAll('__BUNDLE_ID__', `com.stefan.${bundleName}`)
+			.replaceAll('__CONFIG_GROUP_CHILD__', hasConfig ? 'A00000000000000000000016, ' : '')
+			.replaceAll(
+				'__CONFIG_FILE_REFERENCE__',
+				hasConfig
+					? 'A00000000000000000000016 = { isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config/Base.xcconfig; sourceTree = "<group>"; };'
+					: '',
+			)
+			.replaceAll('__CONFIG_REFERENCE__', hasConfig ? 'baseConfigurationReference = A00000000000000000000016;' : '')
+			.replaceAll('__CONFIG_BUILD_SETTINGS__', hasConfig ? 'INFOPLIST_FILE = Config/Info.plist;' : ''),
+	);
+	if (directory !== '.') {
+		disk.copyDir({ from: assetFilePath('monorepo-swift/Config'), to: target('Config') });
+		disk.copyFile({
+			from: assetFilePath('monorepo-swift/Environment.swift'),
+			to: target('Sources/App/Environment.swift'),
+		});
+	}
+}
+
 void createScript(async function init() {
 	const dependencies = [
 		'@types/bun',
@@ -158,7 +208,6 @@ void createScript(async function init() {
 		'lefthook',
 		'kill-port-process',
 	];
-	const assetFilePath = (file: string) => path.join(__dirname, 'files', file);
 
 	console.log(style.header('create root'));
 	const overwriteExistingRepo = args['overwrite-existing-repo'];
@@ -177,28 +226,27 @@ void createScript(async function init() {
 				}).toString(),
 			)
 		: undefined;
-	const clientServerNetwork =
-		args.type === 'client-server' || args.type === 'svelte' ? getClientServerNetworkConfig() : undefined;
+	const clientServerNetwork = hasClientServer || args.type === 'svelte' ? getClientServerNetworkConfig() : undefined;
 	const hasBunScaffold = args.type !== 'swift' && args.type !== 'empty';
 	if (overwriteExistingRepo) fs.rmSync(root, { recursive: true, force: true });
 	disk.setRoot(root);
 	disk.createDir('.');
 	if (args.type === 'swift') {
-		disk.copyFile({ from: assetFilePath('swift/.gitignore'), to: '.gitignore' });
-		disk.copyFile({
-			from: assetFilePath('swift/vscode.code-workspace'),
-			to: args.name + '.code-workspace',
-		});
+		disk.copyFile({ from: assetFilePath('swift/vscode.code-workspace'), to: args.name + '.code-workspace' });
 	} else if (hasBunScaffold) {
-		disk.copyFile({ from: assetFilePath('gitignore'), to: '.gitignore' });
-		disk.copyFile({ from: assetFilePath('tsconfig.json'), to: 'tsconfig.json' });
-		disk.copyFile({ from: assetFilePath('lefthook.yml'), to: '.lefthook.yml' });
-		disk.copyFile({
-			from: assetFilePath('vscode.code-workspace'),
-			to: args.name + '.code-workspace',
-		});
-		disk.copyFile({ from: assetFilePath('oxlint.json'), to: 'oxlint.json' });
-		disk.copyFile({ from: assetFilePath('.oxfmtrc.json'), to: '.oxfmtrc.json' });
+		const prefix = args.type === 'svelte' ? 'svelte/' : '';
+		for (const file of [
+			'gitignore',
+			'tsconfig.json',
+			'lefthook.yml',
+			'oxlint.json',
+			'.oxfmtrc.json',
+			'vscode.code-workspace',
+		]) {
+			const destination =
+				file === 'gitignore' ? '.gitignore' : file === 'vscode.code-workspace' ? args.name + '.code-workspace' : file;
+			disk.copyFile({ from: assetFilePath(prefix + file), to: destination });
+		}
 	}
 	cmd.setCWD(root);
 
@@ -231,59 +279,59 @@ void createScript(async function init() {
 			}));
 			break;
 		case 'client-server':
-			disk.copyFile({ from: assetFilePath('AGENTS.client-server.md'), to: 'AGENTS.md' });
+		case 'monorepo-swift':
 			const network = clientServerNetwork!;
+			const hasIos = args.type === 'monorepo-swift';
+			disk.copyFile({ from: assetFilePath('AGENTS.client-server.md'), to: 'AGENTS.md' });
+			for (const directory of ['server', 'shared', 'client']) {
+				disk.copyDir({ from: assetFilePath(directory), to: directory });
+			}
 			disk.writeFile(
 				'.env',
-				network.clientHost
-					? textBlock`
-						API_PORT=${network.apiPort}
-						CLIENT_PORT=${network.clientPort}
-						CLIENT_HOST=${network.clientHost}
-					`
-					: textBlock`
-						API_PORT=${network.apiPort}
-						CLIENT_PORT=${network.clientPort}
-					`,
+				textBlock`
+					# env-manager: ${args.name}
+					# env-manager local:true
+					# env-manager target: client format=ts
+					# env-manager target: server format=ts
+					${hasIos ? '# env-manager target: app-ios format=swift' : ''}
+
+					# env-manager targets: ${hasIos ? 'client,app-ios' : 'client'}
+					API_URL=http://127.0.0.1:${network.apiPort} # {url}
+
+					# env-manager targets: client
+					CLIENT_PORT=${network.clientPort} # {int:min(1),max(65535)}
+					CLIENT_HOST=${network.clientHost ?? ''} # {optional string}
+
+					# env-manager targets: server
+					API_PORT=${network.apiPort} # {int:min(1),max(65535)}
+				`,
 			);
-			if (network.clientHost) {
-				const agentsPath = disk.getAbsolutePath('AGENTS.md');
-				const agentsContent = fs.readFileSync(agentsPath, 'utf8');
-				disk.writeFile(
-					'AGENTS.md',
-					`${agentsContent}\n- Local dev host: use https://${network.clientHost} via localias instead of localhost:${network.clientPort}. API requests should go through the client-relative /api proxy.\n`,
-				);
-
-				if (!overwriteExistingRepo) {
-					console.log(style.header('setup localias'));
-					cmd(`localias set ${network.clientHost} ${network.clientPort}`);
-				}
-			}
-
-			console.log(style.header('create server'));
-			disk.copyDir({ from: assetFilePath('server'), to: 'server' });
-
-			console.log(style.header('create shared'));
-			disk.copyDir({ from: assetFilePath('shared'), to: 'shared' });
-
-			console.log(style.header('create client'));
-			disk.copyDir({ from: assetFilePath('client'), to: 'client' });
-			const bunRun =
-				'bun run --elide-lines 0 --no-clear-screen --install fallback --env-file .env --env-file .env.local --filter ';
 			disk.updateJsonFile('package.json', data => ({
 				...data,
 				workspaces: ['server', 'client'],
 				scripts: {
 					...data.scripts,
-					'server:dev': bunRun + 'server dev',
-					'client:dev': bunRun + 'client dev',
-					dev: "concurrently --restart-tries=-1 --restart-after=1000 --names 'server ,client ,' --c 'green,cyan' 'bun run server:dev' 'bun run client:dev'",
+					start: 'concurrently --raw -k -s first "bun run start:server" "bun run start:client"',
+					'start:client': 'bun run --cwd client start',
+					'start:server': 'bun run --cwd server start',
+					...(hasIos ? { 'start:ios': 'bun app-ios/run' } : {}),
+					dev: 'bun run start',
+					'client:dev': 'bun run start:client',
+					'server:dev': 'bun run start:server',
+					'env:generate': 'env-manager gen --local',
 				},
 			}));
+			disk.copyFile({ from: assetFilePath('README.client-server.md'), to: 'README.md' });
+			if (hasIos) {
+				scaffoldSwift('app-ios');
+				for (const file of ['README.md', 'AGENTS.md']) {
+					const content = fs.readFileSync(disk.getAbsolutePath(file), 'utf8');
+					disk.writeFile(file, content + fs.readFileSync(assetFilePath('monorepo-swift/' + file), 'utf8'));
+				}
+			}
 			dependencies.push(
-				'kill-port-process',
 				'concurrently',
-
+				'zod',
 				'react',
 				'react-dom',
 				'vite',
@@ -299,15 +347,6 @@ void createScript(async function init() {
 			break;
 		case 'svelte':
 			disk.copyFile({ from: assetFilePath('svelte/AGENTS.md'), to: 'AGENTS.md' });
-			disk.copyFile({ from: assetFilePath('svelte/gitignore'), to: '.gitignore' });
-			disk.copyFile({ from: assetFilePath('svelte/lefthook.yml'), to: '.lefthook.yml' });
-			disk.copyFile({ from: assetFilePath('svelte/oxlint.json'), to: 'oxlint.json' });
-			disk.copyFile({ from: assetFilePath('svelte/.oxfmtrc.json'), to: '.oxfmtrc.json' });
-			disk.copyFile({ from: assetFilePath('svelte/tsconfig.json'), to: 'tsconfig.json' });
-			disk.copyFile({
-				from: assetFilePath('svelte/vscode.code-workspace'),
-				to: args.name + '.code-workspace',
-			});
 
 			const svelteNetwork = clientServerNetwork!;
 			const uiUrl = svelteNetwork.clientHost
@@ -318,7 +357,8 @@ void createScript(async function init() {
 				'.env',
 				textBlock`
 						# env-manager: ${args.name} | ${new Date().toISOString()}
-						# env-manager ts: packages/shared/src/env.ts
+						# env-manager local:true
+						# env-manager generate: packages/shared/src/env.ts
 
 						UI_URL=${uiUrl} # {url}
 						SERVER_URL=${serverUrl} # {url}
@@ -326,19 +366,6 @@ void createScript(async function init() {
 						PORT=${svelteNetwork.apiPort} # {int}
 					`,
 			);
-			if (svelteNetwork.clientHost) {
-				const agentsPath = disk.getAbsolutePath('AGENTS.md');
-				const agentsContent = fs.readFileSync(agentsPath, 'utf8');
-				disk.writeFile(
-					'AGENTS.md',
-					`${agentsContent}\n# Local Dev Hosts\n\n- UI: ${svelteNetwork.clientHost} -> ${svelteNetwork.clientPort}\n`,
-				);
-
-				if (!overwriteExistingRepo) {
-					console.log(style.header('setup localias'));
-					cmd(`localias set ${svelteNetwork.clientHost} ${svelteNetwork.clientPort}`);
-				}
-			}
 
 			console.log(style.header('create server'));
 			disk.copyDir({ from: assetFilePath('svelte/apps/server'), to: 'apps/server' });
@@ -383,74 +410,24 @@ void createScript(async function init() {
 			}));
 			break;
 		case 'swift':
-			disk.copyFile({ from: assetFilePath('swift/AGENTS.md'), to: 'AGENTS.md' });
-			disk.copyDir({ from: assetFilePath('swift/Sources'), to: 'Sources' });
-			disk.copyDir({ from: assetFilePath('swift/App.xcodeproj'), to: 'App.xcodeproj' });
-			disk.copyDir({ from: assetFilePath('swift/scripts'), to: 'scripts' });
-			const bundleName = args.name.toLowerCase().replace(/[^a-z0-9-]/g, '-');
-			const bundleId = `com.stefan.${bundleName}`;
-			const projectFile = 'App.xcodeproj/project.pbxproj';
-			const template = fs.readFileSync(disk.getAbsolutePath(projectFile), 'utf8');
-			disk.writeFile(
-				projectFile,
-				template.replaceAll('__APP_NAME__', () => JSON.stringify(args.name)).replaceAll('__BUNDLE_ID__', bundleId),
-			);
-			fs.chmodSync(disk.getAbsolutePath('scripts/run'), 0o755);
-			disk.writeFile(
-				'Package.swift',
-				textBlock`
-					// swift-tools-version: 6.0
-					import PackageDescription
-
-					let package = Package(
-						name: ${JSON.stringify(args.name)},
-						platforms: [
-							.iOS(.v17),
-							.macOS(.v14),
-						],
-						products: [
-							.executable(name: ${JSON.stringify(args.name)}, targets: ["App"]),
-						],
-						targets: [
-							.executableTarget(name: "App"),
-						]
-					)
-				`,
-			);
-			disk.writeFile(
-				'README.md',
-				textBlock`
-					# ${args.name}
-
-					SwiftUI app for iOS 17+ and macOS 14+, with a shared Xcode scheme and Bun TypeScript launcher.
-
-					## Commands
-
-					\`\`\`sh
-					./scripts/run                      # auto-select; watch by default
-					./scripts/run --targets            # list targets; * marks the default
-					./scripts/run -t simulator
-					./scripts/run -t "iPhone 17"        # name or identifier
-					./scripts/run -t mac
-					./scripts/run --no-watch           # build and launch once
-					\`\`\`
-
-					Requires Xcode 16 or newer and Bun. Install an iOS simulator runtime for simulator testing.
-					Without a target flag, the launcher prefers a connected iOS device, then a booted simulator, then an available simulator, then My Mac.
-					Set \`SWIFT_RUN_DEFAULT_TARGET\` to a target name, identifier, \`simulator\`, or \`mac\` to override that default; \`-t\` takes precedence.
-					Duplicate simulator names prefer a booted instance, then the newest runtime. Use an identifier for an exact selection.
-
-					Edit \`Sources/App\`; saving changes rebuilds and restarts the app automatically. \`--watch\` / \`-w\` are enabled by default; stop with Ctrl-C.
-					Build errors leave the watcher running. Fix the error and save again. Temporary app state resets after relaunch.
-					Build logs are saved in \`DerivedData/device/build.log\`, \`DerivedData/simulator/build.log\`, or \`DerivedData/mac/build.log\`.
-					For a physical device, pair it in Xcode, enable Developer Mode, and keep it unlocked. Configure automatic signing in Xcode or pass \`--team YOUR_TEAM_ID\` (also \`SWIFT_RUN_DEVELOPMENT_TEAM\`).
-					Open \`App.xcodeproj\` and select the \`App\` scheme to debug in Xcode.
-					\`swift build\` checks the shared code on macOS; \`./scripts/run -t mac\` launches the bundled app.
-				`,
-			);
+			scaffoldSwift();
 			break;
 		default:
 			throw new Error(`Invalid type: ${args.type}`);
+	}
+
+	if (clientServerNetwork?.clientHost) {
+		const { clientHost, clientPort } = clientServerNetwork;
+		const agentsContent = fs.readFileSync(disk.getAbsolutePath('AGENTS.md'), 'utf8');
+		disk.writeFile(
+			'AGENTS.md',
+			`${agentsContent}\n- Local web host: ${clientHost} -> ${clientPort}; browser API calls use the /api proxy.\n`,
+		);
+		if (!overwriteExistingRepo) cmd(`localias set ${clientHost} ${clientPort}`);
+	}
+	if (hasClientServer || args.type === 'svelte') {
+		cmd('env-manager init --local');
+		cmd('env-manager gen --local');
 	}
 
 	if (args.type === 'svelte') {

@@ -4,7 +4,8 @@ import { closeSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync }
 import { basename, dirname, join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 
-const root = resolve(import.meta.dir, "..");
+const root = resolve(import.meta.dir, existsSync(join(import.meta.dir, "App.xcodeproj")) ? "." : "..");
+const runCommand = `./${root === import.meta.dir ? "run" : "scripts/run"}`;
 const children = new Set<Bun.Subprocess>();
 const { values } = parseArgs({
     options: {
@@ -89,16 +90,16 @@ function selectTarget(all: Target[]): Target {
     if (!requested) return ranked[0];
     const matches = ranked.filter(target => requested === "simulator" ? target.kind === "simulator"
         : target.id.toLowerCase() === requested.toLowerCase() || target.name.toLowerCase() === requested.toLowerCase());
-    if (!matches.length) throw new Error(`No matching target: ${requested}. Use ./scripts/run --targets.`);
+    if (!matches.length) throw new Error(`No matching target: ${requested}. Use ${runCommand} --targets.`);
     if (matches.length > 1 && requested !== "simulator" && matches.some(target => target.kind === "device")) {
-        throw new Error(`Multiple targets named ${requested}. Use an identifier from ./scripts/run --targets.`);
+        throw new Error(`Multiple targets named ${requested}. Use an identifier from ${runCommand} --targets.`);
     }
     return matches[0];
 }
 
 function snapshot(project: string) {
     const hash = createHash("sha256");
-    for (const directory of ["Sources", "Configuration", project]) {
+    for (const directory of ["Sources", "Config", "Configuration", project]) {
         if (!existsSync(join(root, directory))) continue;
         for (const file of readdirSync(join(root, directory), { recursive: true }).map(String).sort()) {
             if (file.split("/").includes("xcuserdata") || basename(file) === ".DS_Store") continue;
@@ -157,7 +158,7 @@ async function deploy(target: Target, project: string) {
 
 async function main() {
     if (values.help) {
-        console.log(`Usage: ./scripts/run [-t simulator|mac|<target-name-or-id>] [--targets] [--watch|-w] [--no-watch] [--team TEAM_ID]
+        console.log(`Usage: ${runCommand} [-t simulator|mac|<target-name-or-id>] [--targets] [--watch|-w] [--no-watch] [--team TEAM_ID]
 
 Defaults to a connected iOS device, then a booted simulator, then an available simulator, then My Mac.
 SWIFT_RUN_DEFAULT_TARGET overrides this choice when -t/--target is omitted. --targets marks the effective default with *.

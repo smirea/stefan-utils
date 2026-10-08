@@ -18,7 +18,7 @@
 	},
 	"overrides": [
 		{
-			"files": ["src/config.ts"],
+			"files": ["**/env.ts"],
 			"rules": {
 				"node/no-process-env": "off"
 			}

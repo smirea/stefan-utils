@@ -18,6 +18,7 @@
 
 - Environment files are managed by `env-manager`.
 - Keep `.env` tracked with harmless/default values and `.env.local` ignored for local values.
+- Setup uses `env-manager init --local` and `env-manager gen --local`. Edit root `.env.local`, regenerate, and use the generated shared reader. `local:true` avoids AWS calls and automatic Git updates. See `env-manager --help` for schema and directory-target support when splitting configuration into separate app scopes.
 
 # Frontend
 

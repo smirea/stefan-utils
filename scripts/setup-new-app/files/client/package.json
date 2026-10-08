@@ -1,7 +1,9 @@
 {
 	"name": "client",
 	"private": true,
+	"type": "module",
 	"scripts": {
-		"dev": "rm -rf node_modules/.vite; bunx --bun vite -- --port $CLIENT_PORT"
+		"start": "bunx --bun vite",
+		"dev": "bun run start"
 	}
 }
