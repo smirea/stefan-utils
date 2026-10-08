@@ -43,6 +43,11 @@ const { args } = parseArgv({
 			default: 'public',
 			choices: ['public', 'private', 'internal', 'none'],
 		},
+		'overwrite-existing-repo': {
+			type: 'boolean',
+			default: false,
+			description: 'replace the local app folder and force-push fresh history to an existing GitHub repo',
+		},
 		localhost: {
 			type: 'string',
 			optional: true,
@@ -122,9 +127,19 @@ function getClientServerNetworkConfig() {
 		};
 	}
 
-	const clientPort = port ?? getNextLocaliasPort();
-	const apiPort = clientPort + 1;
 	const clientHost = `${localhostPrefix}.localhost`;
+	let clientPort = port;
+	if (args['overwrite-existing-repo']) {
+		const listOutput = cmd('localias list', { stdio: 'pipe', encoding: 'utf8' }).toString();
+		const mapping = listOutput.split('\n').map(line => line.trim().split(/\s*->\s*/));
+		const existingPort = parsePort(mapping.find(([host]) => host === clientHost)?.[1]);
+		if (!existingPort) throw new Error(`No existing localias mapping for ${clientHost}`);
+		if (port && port !== existingPort)
+			throw new Error(`Existing localias mapping for ${clientHost} uses port ${existingPort}`);
+		clientPort = existingPort;
+	}
+	clientPort ??= getNextLocaliasPort();
+	const apiPort = clientPort + 1;
 	return {
 		apiPort,
 		clientHost,
@@ -146,10 +161,26 @@ void createScript(async function init() {
 	const assetFilePath = (file: string) => path.join(__dirname, 'files', file);
 
 	console.log(style.header('create root'));
-	if (fs.existsSync(root)) throw new Error(`root "${root}" already exists`);
+	const overwriteExistingRepo = args['overwrite-existing-repo'];
+	if (overwriteExistingRepo && args.repo === 'none') {
+		throw new Error('--overwrite-existing-repo cannot be used with --repo none');
+	}
+	if (overwriteExistingRepo && (args.name === '.' || args.name === '..' || path.basename(args.name) !== args.name)) {
+		throw new Error('--name must be a folder name when using --overwrite-existing-repo');
+	}
+	if (fs.existsSync(root) && !overwriteExistingRepo) throw new Error(`root "${root}" already exists`);
+	const existingRepo: { sshUrl: string; defaultBranchRef: { name: string } | null } | undefined = overwriteExistingRepo
+		? JSON.parse(
+				cmd(`gh repo view ${shellQuote(args.name)} --json sshUrl,defaultBranchRef`, {
+					stdio: 'pipe',
+					encoding: 'utf8',
+				}).toString(),
+			)
+		: undefined;
 	const clientServerNetwork =
 		args.type === 'client-server' || args.type === 'svelte' ? getClientServerNetworkConfig() : undefined;
 	const hasBunScaffold = args.type !== 'swift' && args.type !== 'empty';
+	if (overwriteExistingRepo) fs.rmSync(root, { recursive: true, force: true });
 	disk.setRoot(root);
 	disk.createDir('.');
 	if (args.type === 'swift') {
@@ -223,8 +254,10 @@ void createScript(async function init() {
 					`${agentsContent}\n- Local dev host: use https://${network.clientHost} via localias instead of localhost:${network.clientPort}. API requests should go through the client-relative /api proxy.\n`,
 				);
 
-				console.log(style.header('setup localias'));
-				cmd(`localias set ${network.clientHost} ${network.clientPort}`);
+				if (!overwriteExistingRepo) {
+					console.log(style.header('setup localias'));
+					cmd(`localias set ${network.clientHost} ${network.clientPort}`);
+				}
 			}
 
 			console.log(style.header('create server'));
@@ -301,8 +334,10 @@ void createScript(async function init() {
 					`${agentsContent}\n# Local Dev Hosts\n\n- UI: ${svelteNetwork.clientHost} -> ${svelteNetwork.clientPort}\n`,
 				);
 
-				console.log(style.header('setup localias'));
-				cmd(`localias set ${svelteNetwork.clientHost} ${svelteNetwork.clientPort}`);
+				if (!overwriteExistingRepo) {
+					console.log(style.header('setup localias'));
+					cmd(`localias set ${svelteNetwork.clientHost} ${svelteNetwork.clientPort}`);
+				}
 			}
 
 			console.log(style.header('create server'));
@@ -424,7 +459,8 @@ void createScript(async function init() {
 		cmd('bun add ' + Array.from(new Set(dependencies)).sort().join(' '));
 	}
 
-	cmd('git init');
+	const branch = existingRepo?.defaultBranchRef?.name ?? 'master';
+	cmd(`git init -b ${shellQuote(branch)}`);
 	if (args.type === 'svelte') {
 		cmd('bun run prepare');
 		cmd('bun run lint');
@@ -432,9 +468,15 @@ void createScript(async function init() {
 	cmd('git add -A');
 	cmd('git commit -m "initial setup with stefan-utils/scripts/setup-new-app"');
 	if (args.repo !== 'none') {
-		cmd(`gh repo create ${shellQuote(args.name)} --${args.repo} --source=. --remote=origin`);
-		cmd('git push -u origin master');
-		const inviteAiCommand = getInviteAiCommand(args.name);
-		if (inviteAiCommand) cmd(inviteAiCommand);
+		if (existingRepo) {
+			cmd(`git remote add origin ${shellQuote(existingRepo.sshUrl)}`);
+		} else {
+			cmd(`gh repo create ${shellQuote(args.name)} --${args.repo} --source=. --remote=origin`);
+		}
+		cmd(`git push ${overwriteExistingRepo ? '--force ' : ''}-u origin ${shellQuote(branch)}`);
+		if (!overwriteExistingRepo) {
+			const inviteAiCommand = getInviteAiCommand(args.name);
+			if (inviteAiCommand) cmd(inviteAiCommand);
+		}
 	}
 });
