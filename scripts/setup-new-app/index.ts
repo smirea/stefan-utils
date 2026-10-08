@@ -95,8 +95,7 @@ function parsePort(port: string | undefined) {
 	return parsedPort;
 }
 
-function getNextLocaliasPort() {
-	const listOutput = cmd('localias list', { stdio: 'pipe', encoding: 'utf8' }).toString();
+function getNextLocaliasPort(listOutput: string) {
 	const ports = Array.from(listOutput.matchAll(/->\s*(\d+)/g), match => Number(match[1]));
 	const maxPort = Math.max(5990, ...ports.filter(Number.isFinite));
 	return Math.floor(maxPort / 10) * 10 + 10;
@@ -130,22 +129,21 @@ function getClientServerNetworkConfig() {
 	}
 
 	const clientHost = `${localhostPrefix}.localhost`;
-	let clientPort = port;
+	const listOutput = cmd('localias list', { stdio: 'pipe', encoding: 'utf8' }).toString();
+	let existingPort: number | undefined;
 	if (args['overwrite-existing-repo']) {
-		const listOutput = cmd('localias list', { stdio: 'pipe', encoding: 'utf8' }).toString();
 		const mapping = listOutput.split('\n').map(line => line.trim().split(/\s*->\s*/));
-		const existingPort = parsePort(mapping.find(([host]) => host === clientHost)?.[1]);
-		if (!existingPort) throw new Error(`No existing localias mapping for ${clientHost}`);
-		if (port && port !== existingPort)
+		existingPort = parsePort(mapping.find(([host]) => host === clientHost)?.[1]);
+		if (existingPort && port && port !== existingPort)
 			throw new Error(`Existing localias mapping for ${clientHost} uses port ${existingPort}`);
-		clientPort = existingPort;
 	}
-	clientPort ??= getNextLocaliasPort();
+	const clientPort = existingPort ?? port ?? getNextLocaliasPort(listOutput);
 	const apiPort = clientPort + 1;
 	return {
 		apiPort,
 		clientHost,
 		clientPort,
+		needsLocaliasSetup: !existingPort,
 	};
 }
 
@@ -423,7 +421,7 @@ void createScript(async function init() {
 			'AGENTS.md',
 			`${agentsContent}\n- Local web host: ${clientHost} -> ${clientPort}; browser API calls use the /api proxy.\n`,
 		);
-		if (!overwriteExistingRepo) cmd(`localias set ${clientHost} ${clientPort}`);
+		if (clientServerNetwork.needsLocaliasSetup) cmd(`localias set ${clientHost} ${clientPort}`);
 	}
 	if (hasClientServer || args.type === 'svelte') {
 		cmd('env-manager init --local');
