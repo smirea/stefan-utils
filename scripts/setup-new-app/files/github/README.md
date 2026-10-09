@@ -1,6 +1,6 @@
 # Continuous integration
 
-`workflows/ci.yml` runs checks, tests, and builds on pull requests, default-branch pushes, and manual dispatches. Each task reports success when its stack has no relevant changes. Manual dispatches and initial pushes run every configured task. Documentation changes are ignored; workflow changes run every task. Edit `scripts/changes.py` when adding a new component or changing the layout.
+`workflows/ci.yml` runs checks, tests, and builds on pull requests, default-branch pushes, and manual dispatches. Each task reports success when its stack has no relevant changes. Manual dispatches and initial pushes run every configured task. Documentation changes are ignored; workflow changes run every task. Edit `scripts/changes.ts` when adding a new component or changing the layout. All CI helpers run with Bun, pinned by `.bun-version`, including Swift and empty scaffolds.
 
 Actions are pinned to commit SHAs. Dependabot checks for action updates weekly. A failure in change detection fails the task jobs too.
 

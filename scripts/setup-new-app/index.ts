@@ -79,10 +79,10 @@ function scaffoldGithub(branch: string) {
 			.join('\n');
 	disk.createDir('.github/workflows');
 	disk.createDir('.github/scripts');
-	disk.copyFile({ from: assetFilePath('github/changes.py'), to: '.github/scripts/changes.py' });
+	disk.copyFile({ from: assetFilePath('github/changes.ts'), to: '.github/scripts/changes.ts' });
 	disk.copyFile({ from: assetFilePath('github/README.md'), to: '.github/README.md' });
 	disk.copyFile({ from: assetFilePath('github/dependabot.yml'), to: '.github/dependabot.yml' });
-	if (hasSwift) disk.copyFile({ from: assetFilePath('github/swift.sh'), to: '.github/scripts/swift.sh' });
+	if (hasSwift) disk.copyFile({ from: assetFilePath('github/swift.ts'), to: '.github/scripts/swift.ts' });
 	const workflow =
 		template('ci.yml') +
 		'\n' +
@@ -101,7 +101,7 @@ function scaffoldGithub(branch: string) {
 			)
 			.replaceAll('      # __SWIFT_ENV__', args.type === 'monorepo-swift' ? indent(template('swift-env.yml'), 6) : ''),
 	);
-	if (hasBun) disk.writeFile('.bun-version', Bun.version + '\n');
+	disk.writeFile('.bun-version', Bun.version + '\n');
 }
 
 function shellQuote(value: string) {
