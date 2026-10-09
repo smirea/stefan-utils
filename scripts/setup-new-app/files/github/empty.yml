@@ -1,0 +1,15 @@
+empty:
+  name: ${{ matrix.task }}
+  needs: changes
+  if: ${{ !cancelled() }}
+  runs-on: ubuntu-latest
+  timeout-minutes: 5
+  strategy:
+    matrix:
+      task: [checks, tests, build]
+  steps:
+    - name: Verify change detection
+      env:
+        CHANGE_RESULT: ${{ needs.changes.result }}
+      run: test "$CHANGE_RESULT" = success
+    - run: echo "No tooling configured yet; ${{ matrix.task }} passed."

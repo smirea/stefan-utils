@@ -1,0 +1,48 @@
+swift:
+  name: ${{ matrix.task }} (Swift)
+  needs: changes
+  if: ${{ !cancelled() }}
+  runs-on: ${{ needs.changes.outputs.swift == 'true' && 'macos-15' || 'ubuntu-latest' }}
+  timeout-minutes: 25
+  strategy:
+    fail-fast: false
+    matrix:
+      task: [checks, tests, build]
+  env:
+    SWIFT_DIRECTORY: __SWIFT_DIRECTORY__
+    CI: 'true'
+    LEFTHOOK: '0'
+  steps:
+    - name: Verify change detection
+      env:
+        CHANGE_RESULT: ${{ needs.changes.result }}
+      run: test "$CHANGE_RESULT" = success
+    - name: No relevant changes
+      if: needs.changes.outputs.swift != 'true'
+      run: echo "No Swift changes; ${{ matrix.task }} passed."
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      if: needs.changes.outputs.swift == 'true'
+      with:
+        persist-credentials: false
+    # __SWIFT_ENV__
+    - name: Identify Xcode and Swift toolchain
+      if: needs.changes.outputs.swift == 'true'
+      id: toolchain
+      run: |
+        xcodebuild -version
+        swift --version
+        echo "key=$( { xcodebuild -version; swift --version; } | shasum -a 256 | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
+    - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      if: needs.changes.outputs.swift == 'true'
+      with:
+        path: |
+          ${{ env.SWIFT_DIRECTORY }}/.build/repositories
+          ${{ env.SWIFT_DIRECTORY }}/.build/checkouts
+          ${{ env.SWIFT_DIRECTORY }}/.build/artifacts
+          ${{ env.SWIFT_DIRECTORY }}/.build/SourcePackages
+        key: ${{ runner.os }}-${{ runner.arch }}-spm-${{ steps.toolchain.outputs.key }}-${{ hashFiles(format('{0}/Package.swift', env.SWIFT_DIRECTORY), format('{0}/**/Package.resolved', env.SWIFT_DIRECTORY)) }}
+        restore-keys: |
+          ${{ runner.os }}-${{ runner.arch }}-spm-${{ steps.toolchain.outputs.key }}-
+    - name: Run Swift task
+      if: needs.changes.outputs.swift == 'true'
+      run: bash .github/scripts/swift.sh "${{ matrix.task }}"

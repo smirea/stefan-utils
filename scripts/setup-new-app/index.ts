@@ -66,6 +66,43 @@ const root = path.join(args.path, args.name);
 const defaultClientPort = 3000;
 const assetFilePath = (file: string) => path.join(__dirname, 'files', file);
 const hasClientServer = args.type === 'client-server' || args.type === 'monorepo-swift';
+const envManagerDependency = 'github:smirea/env-manager#60f8b982a945291f9df2e3c4a77830fdd228ae27';
+
+function scaffoldGithub(branch: string) {
+	const hasBun = args.type !== 'swift' && args.type !== 'empty';
+	const hasSwift = args.type === 'swift' || args.type === 'monorepo-swift';
+	const template = (file: string) => fs.readFileSync(assetFilePath('github/' + file), 'utf8');
+	const indent = (content: string, spaces: number) =>
+		content
+			.split('\n')
+			.map(line => (line ? ' '.repeat(spaces) + line : line))
+			.join('\n');
+	disk.createDir('.github/workflows');
+	disk.createDir('.github/scripts');
+	disk.copyFile({ from: assetFilePath('github/changes.py'), to: '.github/scripts/changes.py' });
+	disk.copyFile({ from: assetFilePath('github/README.md'), to: '.github/README.md' });
+	disk.copyFile({ from: assetFilePath('github/dependabot.yml'), to: '.github/dependabot.yml' });
+	if (hasSwift) disk.copyFile({ from: assetFilePath('github/swift.sh'), to: '.github/scripts/swift.sh' });
+	const workflow =
+		template('ci.yml') +
+		'\n' +
+		(hasBun ? indent(template('bun.yml'), 2) : '') +
+		(hasSwift ? indent(template('swift.yml'), 2) : '') +
+		(args.type === 'empty' ? indent(template('empty.yml'), 2) : '');
+	disk.writeFile(
+		'.github/workflows/ci.yml',
+		workflow
+			.replaceAll('__BRANCH__', JSON.stringify(branch))
+			.replaceAll('__TYPE__', args.type)
+			.replaceAll('__SWIFT_DIRECTORY__', args.type === 'monorepo-swift' ? 'app-ios' : '.')
+			.replaceAll(
+				'__PREPARE_ENV__',
+				hasClientServer || args.type === 'svelte' ? 'bun run env:generate' : 'echo "No environment generation needed"',
+			)
+			.replaceAll('      # __SWIFT_ENV__', args.type === 'monorepo-swift' ? indent(template('swift-env.yml'), 6) : ''),
+	);
+	if (hasBun) disk.writeFile('.bun-version', Bun.version + '\n');
+}
 
 function shellQuote(value: string) {
 	return "'" + value.replaceAll("'", "'\\''") + "'";
@@ -258,9 +295,12 @@ void createScript(async function init() {
 		disk.writeJsonFile('package.json', {
 			name: args.name,
 			private: true,
+			packageManager: `bun@${Bun.version}`,
 			scripts: {
 				lint: 'oxlint --fix && oxfmt',
-				test: 'bun test',
+				'lint:ci': 'oxlint && oxfmt --check',
+				typecheck: 'tsc --noEmit',
+				test: 'bun test --pass-with-no-tests',
 			},
 		});
 	}
@@ -279,6 +319,7 @@ void createScript(async function init() {
 				scripts: {
 					...data.scripts,
 					dev: 'bun --watch src/index.ts',
+					build: 'bun build src/index.ts --target bun --outdir dist',
 				},
 			}));
 			break;
@@ -316,6 +357,8 @@ void createScript(async function init() {
 				workspaces: ['server', webDirectory],
 				scripts: {
 					...data.scripts,
+					build: `bun run --cwd ${webDirectory} build && bun build server/src/index.ts --target bun --outdir server/dist`,
+					typecheck: `bun run --cwd ${webDirectory} build && tsc --noEmit`,
 					start: 'concurrently --raw -k -s first "bun run start:server" "bun run start:client"',
 					'start:client': `bun run --cwd ${webDirectory} start`,
 					'start:server': 'bun run --cwd server start',
@@ -323,7 +366,7 @@ void createScript(async function init() {
 					dev: 'bun run start',
 					'client:dev': 'bun run start:client',
 					'server:dev': 'bun run start:server',
-					'env:generate': 'env-manager gen --local',
+					'env:generate': `env-manager gen --local && oxfmt ${webDirectory}/src/env.ts server/src/env.ts`,
 				},
 			}));
 			for (const file of ['README', 'AGENTS']) {
@@ -388,10 +431,12 @@ void createScript(async function init() {
 				type: 'module',
 				workspaces: ['apps/*', 'packages/*'],
 				scripts: {
-					build: 'bun --filter @repo/ui build && bun --filter @repo/server typecheck',
+					build: 'bun --filter @repo/ui build && bun --filter @repo/server build',
 					dev: 'concurrently --raw -k -s first "bun --filter @repo/server dev" "bun --filter @repo/ui dev --host 127.0.0.1"',
 					format: 'oxfmt --write .',
 					lint: 'oxlint --fix && oxfmt --write .',
+					'lint:ci': 'oxlint && oxfmt --check .',
+					'env:generate': 'env-manager gen --local && oxfmt packages/shared/src/env.ts',
 					prepare: 'lefthook install',
 					'server:dev': 'bun --filter @repo/server dev',
 					'server:start': 'bun --filter @repo/server start',
@@ -438,18 +483,26 @@ void createScript(async function init() {
 		cmd('env-manager gen --local');
 	}
 
+	if (hasClientServer || args.type === 'svelte') {
+		disk.updateJsonFile('package.json', data => ({
+			...data,
+			devDependencies: { ...data.devDependencies, 'env-manager': envManagerDependency },
+		}));
+	}
+	const branch = existingRepo?.defaultBranchRef?.name ?? 'master';
+	scaffoldGithub(branch);
+
 	if (args.type === 'svelte') {
 		cmd('bun install --ignore-scripts');
 	} else if (hasBunScaffold) {
 		cmd('bun add ' + Array.from(new Set(dependencies)).sort().join(' '));
 	}
 
-	const branch = existingRepo?.defaultBranchRef?.name ?? 'master';
 	cmd(`git init -b ${shellQuote(branch)}`);
 	if (args.type === 'svelte') {
 		cmd('bun run prepare');
-		cmd('bun run lint');
 	}
+	if (hasBunScaffold) cmd('bun run lint');
 	cmd('git add -A');
 	cmd('git commit -m "initial setup with stefan-utils/scripts/setup-new-app"');
 	if (args.repo !== 'none') {

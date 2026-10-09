@@ -1,0 +1,16 @@
+- uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+  if: needs.changes.outputs.swift == 'true'
+  with:
+    bun-version-file: .bun-version
+- uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+  if: needs.changes.outputs.swift == 'true'
+  with:
+    path: ~/.bun/install/cache
+    key: ${{ runner.os }}-${{ runner.arch }}-bun-${{ hashFiles('.bun-version') }}-${{ hashFiles('bun.lock', 'bun.lockb') }}
+    restore-keys: |
+      ${{ runner.os }}-${{ runner.arch }}-bun-${{ hashFiles('.bun-version') }}-
+- name: Generate native environment from tracked defaults
+  if: needs.changes.outputs.swift == 'true'
+  run: |
+    bun install --frozen-lockfile
+    bun run env:generate
