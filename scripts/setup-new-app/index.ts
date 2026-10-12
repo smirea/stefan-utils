@@ -451,12 +451,12 @@ void createScript(async function init() {
 				},
 				devDependencies: {
 					'@typescript/native': 'npm:typescript@^7.0.2',
-					'@types/node': '^26.2.0',
-					'@types/bun': '^1.3.14',
-					concurrently: '^10.0.5',
-					lefthook: '^2.1.10',
-					oxfmt: '^0.64.0',
-					oxlint: '^1.79.0',
+					'@types/node': '^26.6.5',
+					'@types/bun': '^1.4.3',
+					concurrently: '^10.0.6',
+					lefthook: '^2.2.1',
+					oxfmt: '^0.72.0',
+					oxlint: '^1.87.0',
 					// svelte-check still needs the TypeScript 6 programmatic API.
 					typescript: '^6.0.3',
 				},
