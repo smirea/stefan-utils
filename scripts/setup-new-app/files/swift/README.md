@@ -21,7 +21,7 @@ The launcher selects a target and watches for changes. Edit `Sources/App` to reb
 ./scripts/run -t mac
 ```
 
-`--targets` lists names and identifiers; `*` marks the default. Selection prefers a connected iOS device, then a booted simulator, an available simulator, or My Mac.
+`--targets` lists indexes, names, and identifiers; `-t` accepts any of them; `*` marks the default. Selection prefers a connected iOS device, then a booted simulator, an available simulator, or My Mac.
 
 Set `SWIFT_RUN_DEFAULT_TARGET` to choose a default; `-t` overrides it. For duplicate simulator names, use an identifier to select exactly. Install simulator runtimes in Xcode's settings.
 
