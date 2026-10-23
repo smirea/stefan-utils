@@ -6,3 +6,4 @@
 - Keep project-level docs high level and put component development details in nested AGENTS and README files. Never put secret values in templates, schemas, generated readers, or commits.
 - Overwrite mode deliberately deletes the entire local folder. Reuse external GitHub and existing localias setup, create a localias mapping only when missing, then force-push the new default-branch history; preserve no local files.
 - Validate generated apps as well as this repo. Check CLI help, env-manager config and target outputs, web startup/proxying, and the shared Swift launcher/Xcode configuration when those change.
+- Shared Bun tooling lives in `files/tooling/` (every Bun scaffold) and `files/worktree/` (client-server kinds); decision docs in `files/decisions/` are rendered with `{{NAME}}` variables and `{{?flag}}` line conditions. Markdown templates use `{{NAME}}` because oxfmt rewrites `__NAME__` to bold.
