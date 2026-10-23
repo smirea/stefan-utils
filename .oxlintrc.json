@@ -4,9 +4,7 @@
 	"categories": {
 		"correctness": "error",
 		"suspicious": "warn",
-		"perf": "warn",
-		"style": "warn",
-		"pedantic": "warn"
+		"perf": "warn"
 	},
 	"rules": {
 		"no-unused-vars": "warn",
@@ -18,11 +16,20 @@
 	},
 	"overrides": [
 		{
-			"files": ["src/config.ts"],
+			"files": ["src/config.ts", "scripts/**"],
 			"rules": {
 				"node/no-process-env": "off"
 			}
 		}
 	],
-	"ignorePatterns": ["node_modules", "dist", "build", "generated", "**/generated", "**/*.generated.ts", "**/*.gen.ts"]
+	"ignorePatterns": [
+		"node_modules",
+		"dist",
+		"build",
+		"generated",
+		"**/generated",
+		"**/*.generated.ts",
+		"**/*.gen.ts",
+		"scripts/setup-new-app/files"
+	]
 }

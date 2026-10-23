@@ -118,7 +118,7 @@ function scaffoldTooling(context: TemplateContext) {
 
 // env-manager writes readers unformatted, so formatting them made every later `gen` dirty the tree.
 function ignoreEnvReaders(readers: string[]) {
-	for (const file of ['oxlint.json', '.oxfmtrc.json']) {
+	for (const file of ['.oxlintrc.json', '.oxfmtrc.json']) {
 		disk.updateJsonFile(file, data => ({ ...data, ignorePatterns: [...data.ignorePatterns, ...readers] }));
 	}
 }
@@ -331,7 +331,7 @@ void createScript(async function init() {
 			'gitignore',
 			'tsconfig.json',
 			'lefthook.yml',
-			'oxlint.json',
+			'.oxlintrc.json',
 			'.oxfmtrc.json',
 			'vscode.code-workspace',
 		]) {
