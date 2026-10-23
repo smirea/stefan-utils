@@ -66,7 +66,7 @@ const root = path.join(args.path, args.name);
 const defaultClientPort = 3000;
 const assetFilePath = (file: string) => path.join(__dirname, 'files', file);
 const hasClientServer = args.type === 'client-server' || args.type === 'monorepo-swift';
-const envManagerDependency = 'github:smirea/env-manager#d21803f46cb7f0056990855198d25f182a4e839f';
+const envManagerDependency = 'github:smirea/env-manager#1b0393e4423946c0be7c6156d69974314cedb294';
 const hasBunScaffold = args.type !== 'swift' && args.type !== 'empty';
 const hasEnv = hasClientServer || args.type === 'svelte';
 
