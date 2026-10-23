@@ -10,7 +10,7 @@
 		"build": "bun build src/index.ts --target bun --outdir dist",
 		"dev": "bun --env-file=../../.env --env-file=../../.env.local --watch src/index.ts",
 		"start": "bun --env-file=../../.env --env-file=../../.env.local src/index.ts",
-		"typecheck": "../../node_modules/@typescript/native/bin/tsc --noEmit -p tsconfig.json"
+		"typecheck": "bun check"
 	},
 	"dependencies": {
 		"@repo/shared": "workspace:*",
