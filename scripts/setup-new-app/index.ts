@@ -88,8 +88,8 @@ function renderTemplate(content: string, { flags, vars }: TemplateContext) {
 
 function worktreePortRange(clientPort: number) {
 	// Mirrors files/worktree/scripts/setup-worktree.ts, which derives the same range at runtime from the root .env.
-	const first = 10_000 + (Math.floor(clientPort / 10) % 75) * 300;
-	return `${first}-${first + 299}`;
+	const first = clientPort + 10_000;
+	return `${first}-${first + 1} for the first worktree, ${first + 1000}-${first + 1001} for the second, and so on`;
 }
 
 function scaffoldTooling(context: TemplateContext) {
