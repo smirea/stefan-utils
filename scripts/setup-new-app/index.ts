@@ -66,7 +66,62 @@ const root = path.join(args.path, args.name);
 const defaultClientPort = 3000;
 const assetFilePath = (file: string) => path.join(__dirname, 'files', file);
 const hasClientServer = args.type === 'client-server' || args.type === 'monorepo-swift';
-const envManagerDependency = 'github:smirea/env-manager#60f8b982a945291f9df2e3c4a77830fdd228ae27';
+const envManagerDependency = 'github:smirea/env-manager#d21803f46cb7f0056990855198d25f182a4e839f';
+const hasBunScaffold = args.type !== 'swift' && args.type !== 'empty';
+const hasEnv = hasClientServer || args.type === 'svelte';
+
+type TemplateContext = { flags: Record<string, boolean>; vars: Record<string, string> };
+
+// `{{NAME}}` instead of `__NAME__`, which this repo's oxfmt rewrites to bold in markdown. A line holding
+// `{{?flag}}` is kept only when the flag is set.
+function renderTemplate(content: string, { flags, vars }: TemplateContext) {
+	return content
+		.split('\n')
+		.flatMap(line => {
+			const flag = line.match(/\{\{\?(\w+)\}\}/);
+			if (!flag) return [line];
+			return flags[flag[1]!] ? [line.replace(flag[0], '')] : [];
+		})
+		.join('\n')
+		.replaceAll(/\{\{(\w+)\}\}/g, (match, name: string) => vars[name] ?? match);
+}
+
+function worktreePortRange(clientPort: number) {
+	// Mirrors files/worktree/scripts/setup-worktree.ts, which derives the same range at runtime from the root .env.
+	const first = 10_000 + (Math.floor(clientPort / 10) % 75) * 300;
+	return `${first}-${first + 299}`;
+}
+
+function scaffoldTooling(context: TemplateContext) {
+	const copyTree = (from: string) => {
+		for (const file of fs.readdirSync(assetFilePath(from), { recursive: true, encoding: 'utf8' })) {
+			if (path.basename(file) === '.DS_Store' || fs.statSync(assetFilePath(path.join(from, file))).isDirectory())
+				continue;
+			disk.createDir(path.dirname(file));
+			disk.copyFile({ from: assetFilePath(path.join(from, file)), to: file });
+		}
+	};
+	copyTree('tooling');
+	if (context.flags.worktree) copyTree('worktree');
+
+	const stack = args.type === 'svelte' ? 'svelte' : hasClientServer ? 'client-server' : 'node';
+	const docs = ['README.md', 'product.md', 'workflow.md', ...(context.flags.env ? ['environment.md'] : [])];
+	disk.createDir('docs/decisions');
+	for (const [from, to] of [...docs.map(doc => [doc, doc]), [`stack.${stack}.md`, 'stack.md']]) {
+		const template = fs.readFileSync(assetFilePath(path.join('decisions', from!)), 'utf8');
+		disk.writeFile(path.join('docs/decisions', to!), renderTemplate(template, context));
+	}
+	const agents = fs.readFileSync(disk.getAbsolutePath('AGENTS.md'), 'utf8');
+	const workflow = renderTemplate(fs.readFileSync(assetFilePath('AGENTS.workflow.md'), 'utf8'), context);
+	disk.writeFile('AGENTS.md', workflow + agents);
+}
+
+// env-manager writes readers unformatted, so formatting them made every later `gen` dirty the tree.
+function ignoreEnvReaders(readers: string[]) {
+	for (const file of ['oxlint.json', '.oxfmtrc.json']) {
+		disk.updateJsonFile(file, data => ({ ...data, ignorePatterns: [...data.ignorePatterns, ...readers] }));
+	}
+}
 
 function scaffoldGithub(branch: string) {
 	const hasBun = args.type !== 'swift' && args.type !== 'empty';
@@ -95,10 +150,7 @@ function scaffoldGithub(branch: string) {
 			.replaceAll('__BRANCH__', JSON.stringify(branch))
 			.replaceAll('__TYPE__', args.type)
 			.replaceAll('__SWIFT_DIRECTORY__', args.type === 'monorepo-swift' ? 'app-ios' : '.')
-			.replaceAll(
-				'__PREPARE_ENV__',
-				hasClientServer || args.type === 'svelte' ? 'bun run env:generate' : 'echo "No environment generation needed"',
-			)
+			.replaceAll('__PREPARE_ENV__', hasEnv ? 'bun run env:generate' : 'echo "No environment generation needed"')
 			.replaceAll('      # __SWIFT_ENV__', args.type === 'monorepo-swift' ? indent(template('swift-env.yml'), 6) : ''),
 	);
 	disk.writeFile('.bun-version', Bun.version + '\n');
@@ -267,8 +319,7 @@ void createScript(async function init() {
 				}).toString(),
 			)
 		: undefined;
-	const clientServerNetwork = hasClientServer || args.type === 'svelte' ? getClientServerNetworkConfig() : undefined;
-	const hasBunScaffold = args.type !== 'swift' && args.type !== 'empty';
+	const clientServerNetwork = hasEnv ? getClientServerNetworkConfig() : undefined;
 	if (overwriteExistingRepo) fs.rmSync(root, { recursive: true, force: true });
 	disk.setRoot(root);
 	disk.createDir('.');
@@ -297,6 +348,7 @@ void createScript(async function init() {
 			private: true,
 			packageManager: `bun@${Bun.version}`,
 			scripts: {
+				postinstall: 'lefthook install',
 				lint: 'oxlint --fix && oxfmt',
 				'lint:ci': 'oxlint && oxfmt --check',
 				typecheck: 'bun check',
@@ -350,6 +402,8 @@ void createScript(async function init() {
 
 					# env-manager targets: server
 					API_PORT=${network.apiPort} # {int:min(1),max(65535)}
+					# \`production\` in env-manager prod. server/src/config.ts requires production-only secrets.
+					APP_ENV=development # {string:format(/^(development|production)$/)}
 				`,
 			);
 			disk.updateJsonFile('package.json', data => ({
@@ -366,7 +420,7 @@ void createScript(async function init() {
 					dev: 'bun run start',
 					'client:dev': 'bun run start:client',
 					'server:dev': 'bun run start:server',
-					'env:generate': `env-manager gen --local && oxfmt ${webDirectory}/src/env.ts server/src/env.ts`,
+					'env:generate': 'env-manager gen --local',
 				},
 			}));
 			for (const file of ['README', 'AGENTS']) {
@@ -380,6 +434,7 @@ void createScript(async function init() {
 					disk.writeFile(file, content + fs.readFileSync(assetFilePath('monorepo-swift/' + file), 'utf8'));
 				}
 			}
+			ignoreEnvReaders([`${webDirectory}/src/env.ts`, 'server/src/env.ts']);
 			dependencies.push(
 				'concurrently',
 				'zod',
@@ -415,6 +470,8 @@ void createScript(async function init() {
 						SERVER_URL=${serverUrl} # {url}
 						UI_PORT=${svelteNetwork.clientPort} # {int}
 						PORT=${svelteNetwork.apiPort} # {int}
+						# \`production\` in env-manager prod. apps/server/src/config.ts requires production-only secrets.
+						APP_ENV=development # {string:format(/^(development|production)$/)}
 					`,
 			);
 
@@ -426,6 +483,7 @@ void createScript(async function init() {
 
 			console.log(style.header('create shared'));
 			disk.copyDir({ from: assetFilePath('svelte/packages/shared'), to: 'packages/shared' });
+			ignoreEnvReaders(['packages/shared/src/env.ts']);
 			disk.updateJsonFile('package.json', data => ({
 				...data,
 				type: 'module',
@@ -436,8 +494,8 @@ void createScript(async function init() {
 					format: 'oxfmt --write .',
 					lint: 'oxlint --fix && oxfmt --write .',
 					'lint:ci': 'oxlint && oxfmt --check .',
-					'env:generate': 'env-manager gen --local && oxfmt packages/shared/src/env.ts',
-					prepare: 'lefthook install',
+					'env:generate': 'env-manager gen --local',
+					postinstall: 'lefthook install',
 					'server:dev': 'bun --filter @repo/server dev',
 					'server:start': 'bun --filter @repo/server start',
 					'server:typecheck': 'bun --filter @repo/server typecheck',
@@ -478,31 +536,42 @@ void createScript(async function init() {
 		);
 		if (clientServerNetwork.needsLocaliasSetup) cmd(`localias set ${clientHost} ${clientPort}`);
 	}
-	if (hasClientServer || args.type === 'svelte') {
+	const branch = existingRepo?.defaultBranchRef?.name ?? 'master';
+	if (hasBunScaffold) {
+		scaffoldTooling({
+			flags: { env: hasEnv, worktree: hasClientServer, ios: args.type === 'monorepo-swift' },
+			vars: {
+				APP_NAME: args.name,
+				BRANCH: branch,
+				WEB_DIRECTORY: args.type === 'monorepo-swift' ? 'app-web' : 'client',
+				SERVER_DIRECTORY: args.type === 'svelte' ? 'apps/server' : 'server',
+				WORKTREE_RANGE: clientServerNetwork ? worktreePortRange(clientServerNetwork.clientPort) : '',
+			},
+		});
+	}
+	if (hasEnv) {
 		cmd('env-manager init --local');
 		cmd('env-manager gen --local');
-	}
-
-	if (hasClientServer || args.type === 'svelte') {
 		disk.updateJsonFile('package.json', data => ({
 			...data,
 			devDependencies: { ...data.devDependencies, 'env-manager': envManagerDependency },
 		}));
 	}
-	const branch = existingRepo?.defaultBranchRef?.name ?? 'master';
 	scaffoldGithub(branch);
 
+	// Before installing: the postinstall's `lefthook install` needs the repository.
+	cmd(`git init -b ${shellQuote(branch)}`);
 	if (args.type === 'svelte') {
-		cmd('bun install --ignore-scripts');
+		cmd('bun install');
 	} else if (hasBunScaffold) {
 		cmd('bun add ' + Array.from(new Set(dependencies)).sort().join(' '));
 	}
 
-	cmd(`git init -b ${shellQuote(branch)}`);
-	if (args.type === 'svelte') {
-		cmd('bun run prepare');
+	if (hasBunScaffold) {
+		cmd('bun run lint');
+		// Also generates TanStack Router's route tree, which the pre-commit typecheck needs.
+		cmd('bun run typecheck');
 	}
-	if (hasBunScaffold) cmd('bun run lint');
 	cmd('git add -A');
 	cmd('git commit -m "initial setup with stefan-utils/scripts/setup-new-app"');
 	if (args.repo !== 'none') {

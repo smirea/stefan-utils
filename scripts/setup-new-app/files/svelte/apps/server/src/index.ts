@@ -1,11 +1,11 @@
-import env from '@repo/shared/env';
+import { config } from './config';
 
 const uiBuildPath = new URL('../../ui/build/', import.meta.url);
 
 const server = Bun.serve({
-	development: true,
+	development: config.environment === 'development',
 	idleTimeout: 120,
-	port: env.PORT,
+	port: config.port,
 	routes: {
 		'/api/status': Response.json({ ok: true, now: new Date().toISOString() }),
 	},

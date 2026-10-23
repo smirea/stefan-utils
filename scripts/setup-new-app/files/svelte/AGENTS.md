@@ -16,9 +16,11 @@
 
 # Environment
 
-- Environment files are managed by `env-manager`.
-- Keep `.env` tracked with harmless/default values and `.env.local` ignored for local values.
-- Setup uses `env-manager init --local` and `env-manager gen --local`. Edit root `.env.local`, regenerate, and use the generated shared reader. `local:true` avoids AWS calls and automatic Git updates. See `env-manager --help` for schema and directory-target support when splitting configuration into separate app scopes.
+Full rules in [`docs/decisions/environment.md`](docs/decisions/environment.md).
+
+- Environment files are managed by `env-manager`. Keep `.env` tracked with harmless defaults and `.env.local` ignored for local values.
+- Edit root `.env.local`, run `bun run env:generate`, and commit the reader exactly as generated. `local:true` avoids AWS calls and automatic Git updates.
+- The server reads settings through `apps/server/src/config.ts`, which fails at startup when production lacks a setting.
 
 # Frontend
 

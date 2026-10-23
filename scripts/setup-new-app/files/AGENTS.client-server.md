@@ -3,7 +3,7 @@
 - Tooling: Bun + TypeScript
 - Server: Bun.serve API
 - Client: React + Vite + TanStack Router
-- UI: Tailwind CSS (enabled in **WEB_DIRECTORY**/src/index.css)
+- UI: Tailwind CSS (enabled in `__WEB_DIRECTORY__/src/index.css`)
 - Linting and Hooks: Oxlint + Lefthook
 
 # Structure and commands
@@ -14,7 +14,9 @@
 
 # Environment
 
-- Use env-manager's root `.env` schema and named directory targets. Edit values only in the root `.env.local`, then run `env-manager gen --local`. Child values and readers are generated projections, not independent configs.
-- `local:true` keeps generation offline and disables automatic Git updates. Use `env-manager --help` for target selection, schema types, and remote storage.
-- Read application settings through generated `src/env.ts` in each TypeScript target. The client's reader runs only in Vite's Node context; browser code must not import it.
-- Keep schema and readers tracked, values files ignored, and secrets scoped to the server target. Native and browser settings are public.
+Full rules in [`docs/decisions/environment.md`](docs/decisions/environment.md).
+
+- Use env-manager's root `.env` schema and named directory targets. Edit values only in the root `.env.local`, then run `bun run env:generate`. Child values and readers are generated projections, not independent configs; commit readers exactly as generated.
+- `local:true` keeps generation offline and disables automatic Git updates. The decision doc explains how to move values to AWS `dev` and `prod`.
+- Read application settings through generated `src/env.ts` in each TypeScript target. The server reads them through `server/src/config.ts`, which fails at startup when production lacks a setting. The client's reader runs only in Vite's Node context; browser code must not import it.
+- Keep schema and readers tracked, values files and `.env.override` ignored, and secrets scoped to the server target. Native and browser settings are public.
