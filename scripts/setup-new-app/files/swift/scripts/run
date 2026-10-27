@@ -133,6 +133,7 @@ async function deploy(target: Target, project: string) {
         await command([
             "xcodebuild", "-quiet", "-project", project, "-scheme", basename(project, ".xcodeproj"),
             "-configuration", "Debug", "-destination", target.destination, "-derivedDataPath", build,
+            "-clonedSourcePackagesDirPath", join(root, "DerivedData", "SourcePackages"),
             ...(target.kind === "device" ? ["-allowProvisioningUpdates", "-allowProvisioningDeviceRegistration"] : ["CODE_SIGNING_ALLOWED=NO"]),
             ...(values.team ? [`DEVELOPMENT_TEAM=${values.team}`] : []), "build",
         ], false, fd);

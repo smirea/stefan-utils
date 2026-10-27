@@ -40,3 +40,5 @@ You can also set `SWIFT_RUN_DEVELOPMENT_TEAM`.
 Open `App.xcodeproj` and select the shared `App` scheme to debug. `swift build` checks the package on macOS; use the launcher for simulator builds and bundled resources.
 
 Build logs are in `DerivedData/<target>/build.log`, where `<target>` is `device`, `simulator`, or `mac`. Temporary app state resets after relaunch.
+
+The launcher keeps one `DerivedData/SourcePackages` directory per checkout for Swift package downloads, shared by device, simulator, and Mac builds. Compiled outputs stay in their target-specific directories.

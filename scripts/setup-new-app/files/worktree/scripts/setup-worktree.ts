@@ -18,6 +18,8 @@ if (git('rev-parse', '--git-dir') === git('rev-parse', '--git-common-dir')) {
 }
 
 const wanted = process.argv.slice(2).find(arg => !arg.startsWith('--'));
+if (wanted && process.env.T3CODE_WORKTREE_PATH)
+	throw new Error('T3 owns the branch name; rerun setup without a branch argument.');
 if (wanted && wanted !== git('branch', '--show-current')) {
 	if (git('branch', '--show-current')) git('branch', '-m', wanted);
 	else git('switch', '-c', wanted);
