@@ -16,8 +16,6 @@
 
 # Environment
 
-Full rules in [`docs/decisions/environment.md`](docs/decisions/environment.md).
-
 - Environment files are managed by `env-manager`. Keep `.env` tracked with harmless defaults and `.env.local` ignored for local values.
 - Edit root `.env.local`, run `bun run env:generate`, and commit the reader exactly as generated. `local:true` avoids AWS calls and automatic Git updates.
 - The server reads settings through `apps/server/src/config.ts`, which fails at startup when production lacks a setting.

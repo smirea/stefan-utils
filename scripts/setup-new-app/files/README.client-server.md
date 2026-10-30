@@ -16,6 +16,6 @@ The client proxies `/api/*` to the API and removes the `/api` prefix. For exampl
 
 `env-manager` manages one root `.env` schema with directory targets. The root `.env.local` is the only place to edit local values. Run `bun run env:generate` (`env-manager gen --local`) after editing either file; it generates `__WEB_DIRECTORY__/.env.local`, `server/.env.local`, and each target's `src/env.ts`. Commands from child directories find the owning root. There are no independent child schemas.
 
-Persistent `local:true` keeps setup offline and avoids automatic Git commits. [`docs/decisions/environment.md`](docs/decisions/environment.md) covers moving values to AWS environments `dev` and `prod`. A git-ignored `.env.override` pins per-checkout values such as worktree ports; `scripts/setup-worktree.ts` writes it.
+Persistent `local:true` keeps setup offline and avoids automatic Git commits. See `env-manager --help` for schema types, target selection, and remote storage. A git-ignored `.env.override` pins per-checkout values such as worktree ports; `scripts/setup-worktree.ts` writes it.
 
 Keep `.env` and generated TypeScript readers tracked. Ignore all `.env.local` files and generated Swift values. Read server configuration through `server/src/config.ts`; the client's reader is for Vite's Node-side configuration, not browser code. Browser requests use `/api` and must never import server secrets or the environment reader.

@@ -70,29 +70,7 @@ const envManagerDependency = 'github:smirea/env-manager#1b0393e4423946c0be7c6156
 const hasBunScaffold = args.type !== 'swift' && args.type !== 'empty';
 const hasEnv = hasClientServer || args.type === 'svelte';
 
-type TemplateContext = { flags: Record<string, boolean>; vars: Record<string, string> };
-
-// `{{NAME}}` instead of `__NAME__`, which this repo's oxfmt rewrites to bold in markdown. A line holding
-// `{{?flag}}` is kept only when the flag is set.
-function renderTemplate(content: string, { flags, vars }: TemplateContext) {
-	return content
-		.split('\n')
-		.flatMap(line => {
-			const flag = line.match(/\{\{\?(\w+)\}\}/);
-			if (!flag) return [line];
-			return flags[flag[1]!] ? [line.replace(flag[0], '')] : [];
-		})
-		.join('\n')
-		.replaceAll(/\{\{(\w+)\}\}/g, (match, name: string) => vars[name] ?? match);
-}
-
-function worktreePortRange(clientPort: number) {
-	// Mirrors files/worktree/scripts/setup-worktree.ts, which derives the same range at runtime from the root .env.
-	const first = clientPort + 10_000;
-	return `${first}-${first + 1} for the first worktree, ${first + 1000}-${first + 1001} for the second, and so on`;
-}
-
-function scaffoldTooling(context: TemplateContext) {
+function scaffoldTooling(withWorktree: boolean) {
 	const copyTree = (from: string) => {
 		for (const file of fs.readdirSync(assetFilePath(from), { recursive: true, encoding: 'utf8' })) {
 			if (path.basename(file) === '.DS_Store' || fs.statSync(assetFilePath(path.join(from, file))).isDirectory())
@@ -102,18 +80,7 @@ function scaffoldTooling(context: TemplateContext) {
 		}
 	};
 	copyTree('tooling');
-	if (context.flags.worktree) copyTree('worktree');
-
-	const stack = args.type === 'svelte' ? 'svelte' : hasClientServer ? 'client-server' : 'node';
-	const docs = ['README.md', 'product.md', 'workflow.md', ...(context.flags.env ? ['environment.md'] : [])];
-	disk.createDir('docs/decisions');
-	for (const [from, to] of [...docs.map(doc => [doc, doc]), [`stack.${stack}.md`, 'stack.md']]) {
-		const template = fs.readFileSync(assetFilePath(path.join('decisions', from!)), 'utf8');
-		disk.writeFile(path.join('docs/decisions', to!), renderTemplate(template, context));
-	}
-	const agents = fs.readFileSync(disk.getAbsolutePath('AGENTS.md'), 'utf8');
-	const workflow = renderTemplate(fs.readFileSync(assetFilePath('AGENTS.workflow.md'), 'utf8'), context);
-	disk.writeFile('AGENTS.md', workflow + agents);
+	if (withWorktree) copyTree('worktree');
 }
 
 // env-manager writes readers unformatted, so formatting them made every later `gen` dirty the tree.
@@ -538,16 +505,7 @@ void createScript(async function init() {
 	}
 	const branch = existingRepo?.defaultBranchRef?.name ?? 'master';
 	if (hasBunScaffold) {
-		scaffoldTooling({
-			flags: { env: hasEnv, worktree: hasClientServer, ios: args.type === 'monorepo-swift' },
-			vars: {
-				APP_NAME: args.name,
-				BRANCH: branch,
-				WEB_DIRECTORY: args.type === 'monorepo-swift' ? 'app-web' : 'client',
-				SERVER_DIRECTORY: args.type === 'svelte' ? 'apps/server' : 'server',
-				WORKTREE_RANGE: clientServerNetwork ? worktreePortRange(clientServerNetwork.clientPort) : '',
-			},
-		});
+		scaffoldTooling(hasClientServer);
 	}
 	if (hasEnv) {
 		cmd('env-manager init --local');
