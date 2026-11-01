@@ -468,7 +468,7 @@ void createScript(async function init() {
 					'server:typecheck': 'bun --filter @repo/server typecheck',
 					start: 'bun --filter @repo/server start',
 					test: 'bun test --pass-with-no-tests',
-					typecheck: 'bun --filter @repo/ui check && bun --filter @repo/server typecheck',
+					typecheck: 'bun --filter @repo/ui check && bun --filter @repo/server typecheck && bun check',
 					'ui:build': 'bun --filter @repo/ui build',
 					'ui:check': 'bun --filter @repo/ui check',
 					'ui:dev': 'bun --filter @repo/ui dev --host 127.0.0.1',
