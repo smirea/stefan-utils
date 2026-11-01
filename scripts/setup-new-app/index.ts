@@ -379,7 +379,7 @@ void createScript(async function init() {
 				scripts: {
 					...data.scripts,
 					build: `bun run --cwd ${webDirectory} build && bun build server/src/index.ts --target bun --outdir server/dist`,
-					typecheck: `bun run --cwd ${webDirectory} build && bun check`,
+					typecheck: 'bun check',
 					start: 'concurrently --raw -k -s first "bun run start:server" "bun run start:client"',
 					'start:client': `bun run --cwd ${webDirectory} start`,
 					'start:server': 'bun run --cwd server start',
@@ -475,15 +475,14 @@ void createScript(async function init() {
 					'ui:preview': 'bun --filter @repo/ui preview',
 				},
 				devDependencies: {
-					'@typescript/native': 'npm:typescript@^7.0.2',
 					'@types/node': '^26.6.5',
 					'@types/bun': '^1.4.4',
 					concurrently: '^10.0.6',
 					lefthook: '^2.2.1',
 					oxfmt: '^0.72.0',
 					oxlint: '^1.87.0',
-					// svelte-check --tsgo type-checks with @typescript/native (TS 7) but still needs the TS 6 API for svelte2tsx.
-					typescript: '^6.0.3',
+					// svelte-check-native and `bun check` type-check with TypeScript 7. @repo/ui keeps TypeScript 6 for SvelteKit, which needs the JS API TypeScript 7 lacks.
+					typescript: '^7.0.2',
 				},
 			}));
 			break;
@@ -527,7 +526,8 @@ void createScript(async function init() {
 
 	if (hasBunScaffold) {
 		cmd('bun run lint');
-		// Also generates TanStack Router's route tree, which the pre-commit typecheck needs.
+		// The build generates TanStack Router's route tree, which typecheck reads and the initial commit includes.
+		if (hasClientServer) cmd('bun run build');
 		cmd('bun run typecheck');
 	}
 	cmd('git add -A');
