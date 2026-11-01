@@ -20,5 +20,7 @@
 		"target": "ESNext",
 		"types": ["bun"],
 		"verbatimModuleSyntax": true
-	}
+	},
+	// The apps check themselves. The root covers the repo scripts, and packages so editors open them with these options. TypeScript's wildcards skip dot folders, so those are listed by name.
+	"include": ["packages", "scripts", ".github/scripts", ".claude/hooks"]
 }

@@ -27,5 +27,9 @@
 		"paths": {
 			"shared/*": ["./shared/*"]
 		}
-	}
+	},
+	// TypeScript's wildcards skip dot folders, so the CI and hook scripts are listed by name. All of `.claude` would pull in the agent worktrees under it.
+	"include": ["**/*", ".github/scripts", ".claude/hooks"],
+	// Xcode checks Swift packages out under DerivedData, and some ship JavaScript that allowJs would check.
+	"exclude": ["node_modules", "**/DerivedData"]
 }
