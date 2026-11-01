@@ -16,6 +16,10 @@ The client proxies `/api/*` to the API and removes the `/api` prefix. For exampl
 
 `env-manager` manages one root `.env` schema with directory targets. The root `.env.local` is the only place to edit local values. Run `bun run env:generate` (`env-manager gen --local`) after editing either file; it generates `__WEB_DIRECTORY__/.env.local`, `server/.env.local`, and each target's `src/env.ts`. Commands from child directories find the owning root. There are no independent child schemas.
 
-Persistent `local:true` keeps setup offline and avoids automatic Git commits. See `env-manager --help` for schema types, target selection, and remote storage. A git-ignored `.env.override` pins per-checkout values such as worktree ports; `scripts/setup-worktree.ts` writes it.
+Persistent `local:true` keeps setup offline and avoids automatic Git commits. See `env-manager --help` for schema types, target selection, and remote storage. A git-ignored `.env.override` pins per-checkout values such as worktree ports; `agent-t3-worktree setup` writes it.
 
 Keep `.env` and generated TypeScript readers tracked. Ignore all `.env.local` files and generated Swift values. Read server configuration through `server/src/config.ts`; the client's reader is for Vite's Node-side configuration, not browser code. Browser requests use `/api` and must never import server secrets or the environment reader.
+
+## Agent worktrees
+
+T3 Code sets up each agent worktree with the shared `agent-t3-worktree setup` (installed in `~/bin` by `bun ~/code/scripts/src/setup.ts`): it installs dependencies, moves the worktree's ports to their own block, generates offline env files, and runs the `worktree:setup` package script when one exists. The pre-commit hook runs `agent-t3-worktree check --heal`. Settling a thread or merging its PR removes the worktree, its servers, and its simulators. `bun scripts/setup-worktree.ts` and `bun scripts/teardown-worktree.ts <path | branch> [--force [--delete-branch]]` call the same command by hand; `--force` skips the merged-PR check and keeps the branch unless `--delete-branch` is passed too.

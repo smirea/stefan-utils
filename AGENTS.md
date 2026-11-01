@@ -6,4 +6,4 @@
 - Keep project-level docs high level and put component development details in nested AGENTS and README files. Never put secret values in templates, schemas, generated readers, or commits.
 - Overwrite mode deliberately deletes the entire local folder. Reuse external GitHub and existing localias setup, create a localias mapping only when missing, then force-push the new default-branch history; preserve no local files.
 - Validate generated apps as well as this repo. Check CLI help, env-manager config and target outputs, web startup/proxying, and the shared Swift launcher/Xcode configuration when those change.
-- Shared Bun tooling lives in `files/tooling/` (every Bun scaffold) and `files/worktree/` (client-server kinds).
+- Shared Bun tooling lives in `files/tooling/` (every Bun scaffold) and `files/worktree/` (client-server kinds). The worktree scripts are thin proxies to `~/bin/agent-t3-worktree`, and the Swift launcher calls `~/bin/agent-simulator`; both come from `~/code/scripts`, which owns the worktree and simulator lifecycle. Put generic behavior there, not in the templates. A generated repo's own steps go in a `worktree:setup` package script.

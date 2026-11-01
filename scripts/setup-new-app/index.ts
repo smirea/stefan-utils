@@ -70,6 +70,7 @@ const envManagerDependency = 'github:smirea/env-manager#1b0393e4423946c0be7c6156
 const hasBunScaffold = args.type !== 'swift' && args.type !== 'empty';
 const hasEnv = hasClientServer || args.type === 'svelte';
 
+// `worktree/` only proxies to the shared `agent-t3-worktree`, which owns ports, installs, and cleanup.
 function scaffoldTooling(withWorktree: boolean) {
 	const copyTree = (from: string) => {
 		for (const file of fs.readdirSync(assetFilePath(from), { recursive: true, encoding: 'utf8' })) {

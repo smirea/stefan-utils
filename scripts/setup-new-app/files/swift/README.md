@@ -25,6 +25,8 @@ The launcher selects a target and watches for changes. Edit `Sources/App` to reb
 
 Set `SWIFT_RUN_DEFAULT_TARGET` to choose a default; `-t` overrides it. For duplicate simulator names, use an identifier to select exactly. Install simulator runtimes in Xcode's settings.
 
+In an agent worktree, `./scripts/run -t "$(agent-simulator udid)" --headless` runs on the worktree's own simulator. The launcher claims a simulator it targets and waits for room on the Mac before a headless boot (`agent-simulator wait`, exit code 3 means rerun); both steps are skipped without `~/bin/agent-simulator`.
+
 ## Device signing
 
 Pair the device in Xcode, enable Developer Mode, and unlock it. Configure automatic signing in Xcode or pass your team:

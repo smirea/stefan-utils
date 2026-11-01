@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 import { createHash } from "node:crypto";
 import { closeSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 
@@ -115,6 +116,14 @@ function snapshot(project: string) {
         }
     }
     return hash.digest("hex");
+}
+
+/** Runs the shared `agent-simulator`, which CI doesn't have, passing on its exit code: `wait` exits 3 to mean rerun. */
+async function agentSimulator(...args: string[]) {
+    const binary = join(homedir(), "bin/agent-simulator");
+    if (!existsSync(binary)) return;
+    const code = await Bun.spawn([binary, ...args], { cwd: root, stdin: "ignore", stdout: "inherit", stderr: "inherit" }).exited;
+    if (code !== 0) process.exit(code);
 }
 
 let booting: Promise<void> | undefined;
@@ -278,7 +287,8 @@ async function main() {
 Defaults to a connected iOS device, then a booted simulator, then an available simulator, then My Mac.
 SWIFT_RUN_DEFAULT_TARGET overrides this choice when -t/--target is omitted. --targets marks the effective default with *.
 Watching is enabled by default. Saves rebuild and restart the app. Ctrl-C stops watching.
---headless skips opening Simulator.app or Device Hub; the simulator still boots and runs the app.
+--headless skips opening Simulator.app or Device Hub; the simulator still boots and runs the app. A headless boot
+first waits on agent-simulator wait for room on the Mac, exiting 3 (rerun) after 3 minutes.
 --pair-watch pairs a watch with the simulator first, reusing its pair if it has one, and runs the watch app on it.
 --delete shuts down and deletes the simulator and its paired watches instead of running.`);
         return;
@@ -291,6 +301,12 @@ Watching is enabled by default. Saves rebuild and restart the app. Ctrl-C stops 
     }
     if (values.delete) return deleteSimulator(target);
     console.log(`Selected ${target.name} (${target.kind}${target.runtime ? `, ${target.runtime}` : ""}).`);
+    if (target.kind === "simulator") {
+        // A no-op in the main checkout; a linked worktree's claim keeps gc from deleting a simulator it still uses.
+        await agentSimulator("claim", target.id);
+        // Only agents run headless; the owner's own runs never wait.
+        if (values.headless && target.state !== "booted") await agentSimulator("wait", target.id);
+    }
     const projects = readdirSync(root).filter(file => file.endsWith(".xcodeproj"));
     if (projects.length !== 1) throw new Error("Expected one Xcode project in the repository root.");
     const project = projects[0];
