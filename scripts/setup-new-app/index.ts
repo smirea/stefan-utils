@@ -103,7 +103,7 @@ function scaffoldGithub(branch: string) {
 	disk.createDir('.github/workflows');
 	disk.createDir('.github/scripts');
 	disk.copyFile({ from: assetFilePath('github/changes.ts'), to: '.github/scripts/changes.ts' });
-	disk.copyFile({ from: assetFilePath('github/README.md'), to: '.github/README.md' });
+	disk.copyFile({ from: assetFilePath('github/CI.md'), to: '.github/CI.md' });
 	disk.copyFile({ from: assetFilePath('github/dependabot.yml'), to: '.github/dependabot.yml' });
 	if (hasSwift) disk.copyFile({ from: assetFilePath('github/swift.ts'), to: '.github/scripts/swift.ts' });
 	const workflow =
@@ -116,12 +116,37 @@ function scaffoldGithub(branch: string) {
 		'.github/workflows/ci.yml',
 		workflow
 			.replaceAll('__BRANCH__', JSON.stringify(branch))
-			.replaceAll('__TYPE__', args.type)
+			.replaceAll('{{TYPE}}', args.type)
 			.replaceAll('__SWIFT_DIRECTORY__', args.type === 'monorepo-swift' ? 'app-ios' : '.')
 			.replaceAll('__PREPARE_ENV__', hasEnv ? 'bun run env:generate' : 'echo "No environment generation needed"')
 			.replaceAll('      # __SWIFT_ENV__', args.type === 'monorepo-swift' ? indent(template('swift-env.yml'), 6) : ''),
 	);
 	disk.writeFile('.bun-version', Bun.version + '\n');
+}
+
+function writeReadme(network?: { clientHost?: string; clientPort: number }) {
+	const template = (name: string) => fs.readFileSync(assetFilePath(`readme/${name}.md`), 'utf8');
+	const parts = args.type === 'monorepo-swift' ? ['header', 'client-server', 'monorepo-swift'] : ['header', args.type];
+	const webUrl =
+		network && (network.clientHost ? `http://${network.clientHost}` : `http://localhost:${network.clientPort}`);
+	disk.writeFile(
+		'README.md',
+		parts
+			.map(template)
+			.join('\n')
+			.replaceAll('{{APP_NAME}}', () => args.name)
+			.replaceAll('{{DATE}}', new Date().toISOString().slice(0, 10))
+			.replaceAll('{{TYPE}}', args.type)
+			.replaceAll('{{WEB_DIRECTORY}}', args.type === 'monorepo-swift' ? 'app-web' : 'client')
+			.replaceAll('{{WEB_URL}}', webUrl ?? ''),
+	);
+	if (fs.existsSync(disk.getAbsolutePath('AGENTS.md'))) {
+		const agents = fs.readFileSync(disk.getAbsolutePath('AGENTS.md'), 'utf8');
+		disk.writeFile(
+			'AGENTS.md',
+			`${agents}\n# README\n\n- \`README.md\` starts as the scaffold's placeholder. Once the project takes shape, rewrite it for this project and keep it short.\n`,
+		);
+	}
 }
 
 function shellQuote(value: string) {
@@ -209,7 +234,9 @@ function scaffoldSwift(directory = '.') {
 	const runner = 'scripts/run';
 	const hasConfig = directory !== '.';
 	disk.createDir(directory);
-	for (const file of ['.gitignore', 'AGENTS.md', 'README.md', 'Package.swift']) {
+	// A standalone app gets the shared root README instead.
+	const files = ['.gitignore', 'AGENTS.md', 'Package.swift', ...(directory === '.' ? [] : ['README.md'])];
+	for (const file of files) {
 		const template = fs.readFileSync(assetFilePath('swift/' + file), 'utf8');
 		disk.writeFile(
 			target(file),
@@ -230,7 +257,7 @@ function scaffoldSwift(directory = '.') {
 	disk.writeFile(
 		projectFile,
 		template
-			.replaceAll('__APP_NAME__', () => JSON.stringify(args.name))
+			.replaceAll('{{APP_NAME}}', () => JSON.stringify(args.name))
 			.replaceAll('__BUNDLE_ID__', `com.stefan.${bundleName}`)
 			.replaceAll('__CONFIG_GROUP_CHILD__', hasConfig ? 'A00000000000000000000016, ' : '')
 			.replaceAll(
@@ -327,7 +354,6 @@ void createScript(async function init() {
 
 	switch (args.type) {
 		case 'empty':
-			disk.writeFile('README.md', 'the start of something exciting');
 			break;
 		case 'node':
 			disk.copyFile({ from: assetFilePath('AGENTS.node.md'), to: 'AGENTS.md' });
@@ -391,16 +417,12 @@ void createScript(async function init() {
 					'env:generate': 'env-manager gen --local',
 				},
 			}));
-			for (const file of ['README', 'AGENTS']) {
-				const template = fs.readFileSync(assetFilePath(`${file}.client-server.md`), 'utf8');
-				disk.writeFile(`${file}.md`, template.replaceAll('__WEB_DIRECTORY__', webDirectory));
-			}
+			const agents = fs.readFileSync(assetFilePath('AGENTS.client-server.md'), 'utf8');
+			disk.writeFile('AGENTS.md', agents.replaceAll('{{WEB_DIRECTORY}}', webDirectory));
 			if (hasIos) {
 				scaffoldSwift('app-ios');
-				for (const file of ['README.md', 'AGENTS.md']) {
-					const content = fs.readFileSync(disk.getAbsolutePath(file), 'utf8');
-					disk.writeFile(file, content + fs.readFileSync(assetFilePath('monorepo-swift/' + file), 'utf8'));
-				}
+				const content = fs.readFileSync(disk.getAbsolutePath('AGENTS.md'), 'utf8');
+				disk.writeFile('AGENTS.md', content + fs.readFileSync(assetFilePath('monorepo-swift/AGENTS.md'), 'utf8'));
 			}
 			ignoreEnvReaders([`${webDirectory}/src/env.ts`, 'server/src/env.ts']);
 			dependencies.push(
@@ -503,6 +525,7 @@ void createScript(async function init() {
 		);
 		if (clientServerNetwork.needsLocaliasSetup) cmd(`localias set ${clientHost} ${clientPort}`);
 	}
+	writeReadme(clientServerNetwork);
 	const branch = existingRepo?.defaultBranchRef?.name ?? 'master';
 	if (hasBunScaffold) {
 		scaffoldTooling(hasClientServer);
