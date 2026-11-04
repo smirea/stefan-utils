@@ -116,7 +116,7 @@ function scaffoldGithub(branch: string) {
 		'.github/workflows/ci.yml',
 		workflow
 			.replaceAll('__BRANCH__', JSON.stringify(branch))
-			.replaceAll('{{TYPE}}', args.type)
+			.replaceAll('__TYPE__', args.type)
 			.replaceAll('__SWIFT_DIRECTORY__', args.type === 'monorepo-swift' ? 'app-ios' : '.')
 			.replaceAll('__PREPARE_ENV__', hasEnv ? 'bun run env:generate' : 'echo "No environment generation needed"')
 			.replaceAll('      # __SWIFT_ENV__', args.type === 'monorepo-swift' ? indent(template('swift-env.yml'), 6) : ''),

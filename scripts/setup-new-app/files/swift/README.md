@@ -1,6 +1,6 @@
 # {{APP_NAME}}
 
-SwiftUI app for iOS 17+ and macOS 14+. Requires Bun and Xcode 16 or newer.
+SwiftUI app for iOS 27+ and macOS 27+. Requires Bun and Xcode 27 or newer.
 
 ## Run
 

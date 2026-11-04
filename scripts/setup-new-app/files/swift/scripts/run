@@ -52,7 +52,20 @@ async function command(args: string[], capture = false, log?: number) {
     }
 }
 
-async function targets(): Promise<Target[]> {
+function xcodeProject() {
+    const projects = readdirSync(root).filter(file => file.endsWith(".xcodeproj"));
+    if (projects.length !== 1) throw new Error("Expected one Xcode project in the repository root.");
+    return projects[0];
+}
+
+function minimumIOSMajor(project: string) {
+    const settings = readFileSync(join(root, project, "project.pbxproj"), "utf8");
+    const majors = [...settings.matchAll(/IPHONEOS_DEPLOYMENT_TARGET = "?(\d+)/g)].map(match => Number(match[1]));
+    if (!majors.length) throw new Error(`${project} sets no IPHONEOS_DEPLOYMENT_TARGET.`);
+    return Math.min(...majors);
+}
+
+async function targets(project: string): Promise<Target[]> {
     const [devices, simulators] = await Promise.all([
         command(["xcrun", "devicectl", "list", "devices", "--json-output", "-"], true),
         command(["xcrun", "simctl", "list", "devices", "available", "--json"], true),
@@ -69,9 +82,10 @@ async function targets(): Promise<Target[]> {
             state: connection.state ?? connection.tunnelState,
         });
     }
+    const minimum = minimumIOSMajor(project);
     for (const [runtime, devices] of Object.entries(JSON.parse(simulators).devices) as [string, any[]][]) {
         const version = runtime.match(/\.iOS-(\d+.*)$/)?.[1];
-        if (!version || Number(version.split("-")[0]) < 17) continue;
+        if (!version || Number(version.split("-")[0]) < minimum) continue;
         for (const device of devices) {
             result.push({
                 kind: "simulator", name: device.name, id: device.udid,
@@ -293,7 +307,8 @@ first waits on agent-simulator wait for room on the Mac, exiting 3 (rerun) after
 --delete shuts down and deletes the simulator and its paired watches instead of running.`);
         return;
     }
-    const all = await targets();
+    const project = xcodeProject();
+    const all = await targets(project);
     const target = selectTarget(all);
     if (values.targets) {
         console.table(all.map(({ kind, name, state, runtime, id }) => ({ default: id === target.id ? "*" : "", target: name, kind, state, runtime: runtime ?? "", id })));
@@ -307,9 +322,6 @@ first waits on agent-simulator wait for room on the Mac, exiting 3 (rerun) after
         // Only agents run headless; the owner's own runs never wait.
         if (values.headless && target.state !== "booted") await agentSimulator("wait", target.id);
     }
-    const projects = readdirSync(root).filter(file => file.endsWith(".xcodeproj"));
-    if (projects.length !== 1) throw new Error("Expected one Xcode project in the repository root.");
-    const project = projects[0];
     mkdirSync(join(root, "DerivedData"), { recursive: true });
     const watch = values.watch && !values["no-watch"];
     let previous = snapshot(project);
