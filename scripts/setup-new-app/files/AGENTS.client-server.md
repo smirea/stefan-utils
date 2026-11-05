@@ -23,4 +23,4 @@
 
 - T3 Code runs the shared `agent-t3-worktree setup` when it creates a worktree: it installs, gives the worktree its own 10-port block in the git-ignored `.env.override` (main ports plus `10000 + (n - 1) * 1000`), and runs `env-manager gen --local`. Don't run setup by hand. The pre-commit hook and session start run `agent-t3-worktree check --heal`, which reruns setup when something is missing.
 - Put repo-specific setup steps, such as codegen, in a `worktree:setup` package script; setup runs it last. Keep everything generic out of the repo.
-- Settling the thread, or merging its PR, stops the worktree's servers and simulators and removes the merged worktree with its branch. `scripts/setup-worktree.ts` and `scripts/teardown-worktree.ts` proxy to the shared command for manual use.
+- Settling the thread, or merging its PR, stops the worktree's servers and simulators and removes the merged worktree with its branch.

@@ -71,8 +71,7 @@ const hasBunScaffold = args.type !== 'swift' && args.type !== 'empty';
 const hasEnv = hasClientServer || args.type === 'svelte';
 const hasCi = args.type !== 'empty';
 
-// `worktree/` only proxies to the shared `agent-t3-worktree`, which owns ports, installs, and cleanup.
-function scaffoldTooling(withWorktree: boolean) {
+function scaffoldTooling() {
 	const copyTree = (from: string) => {
 		for (const file of fs.readdirSync(assetFilePath(from), { recursive: true, encoding: 'utf8' })) {
 			if (path.basename(file) === '.DS_Store' || fs.statSync(assetFilePath(path.join(from, file))).isDirectory())
@@ -82,7 +81,6 @@ function scaffoldTooling(withWorktree: boolean) {
 		}
 	};
 	copyTree('tooling');
-	if (withWorktree) copyTree('worktree');
 }
 
 // env-manager writes readers unformatted, so formatting them made every later `gen` dirty the tree.
@@ -528,7 +526,7 @@ void createScript(async function init() {
 	writeReadme(clientServerNetwork);
 	const branch = existingRepo?.defaultBranchRef?.name ?? 'master';
 	if (hasBunScaffold) {
-		scaffoldTooling(hasClientServer);
+		scaffoldTooling();
 	}
 	if (hasEnv) {
 		cmd('env-manager init --local');
