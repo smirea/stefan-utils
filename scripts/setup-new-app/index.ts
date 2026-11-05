@@ -69,6 +69,7 @@ const hasClientServer = args.type === 'client-server' || args.type === 'monorepo
 const envManagerDependency = 'github:smirea/env-manager#1b0393e4423946c0be7c6156d69974314cedb294';
 const hasBunScaffold = args.type !== 'swift' && args.type !== 'empty';
 const hasEnv = hasClientServer || args.type === 'svelte';
+const hasCi = args.type !== 'empty';
 
 // `worktree/` only proxies to the shared `agent-t3-worktree`, which owns ports, installs, and cleanup.
 function scaffoldTooling(withWorktree: boolean) {
@@ -92,7 +93,6 @@ function ignoreEnvReaders(readers: string[]) {
 }
 
 function scaffoldGithub(branch: string) {
-	const hasBun = args.type !== 'swift' && args.type !== 'empty';
 	const hasSwift = args.type === 'swift' || args.type === 'monorepo-swift';
 	const template = (file: string) => fs.readFileSync(assetFilePath('github/' + file), 'utf8');
 	const indent = (content: string, spaces: number) =>
@@ -109,9 +109,8 @@ function scaffoldGithub(branch: string) {
 	const workflow =
 		template('ci.yml') +
 		'\n' +
-		(hasBun ? indent(template('bun.yml'), 2) : '') +
-		(hasSwift ? indent(template('swift.yml'), 2) : '') +
-		(args.type === 'empty' ? indent(template('empty.yml'), 2) : '');
+		(hasBunScaffold ? indent(template('bun.yml'), 2) : '') +
+		(hasSwift ? indent(template('swift.yml'), 2) : '');
 	disk.writeFile(
 		'.github/workflows/ci.yml',
 		workflow
@@ -138,7 +137,8 @@ function writeReadme(network?: { clientHost?: string; clientPort: number }) {
 			.replaceAll('{{DATE}}', new Date().toISOString().slice(0, 10))
 			.replaceAll('{{TYPE}}', args.type)
 			.replaceAll('{{WEB_DIRECTORY}}', args.type === 'monorepo-swift' ? 'app-web' : 'client')
-			.replaceAll('{{WEB_URL}}', webUrl ?? ''),
+			.replaceAll('{{WEB_URL}}', webUrl ?? '')
+			.replaceAll('{{CI}}', hasCi ? ' `.github/CI.md` describes the CI checks.' : ''),
 	);
 	if (fs.existsSync(disk.getAbsolutePath('AGENTS.md'))) {
 		const agents = fs.readFileSync(disk.getAbsolutePath('AGENTS.md'), 'utf8');
@@ -538,7 +538,7 @@ void createScript(async function init() {
 			devDependencies: { ...data.devDependencies, 'env-manager': envManagerDependency },
 		}));
 	}
-	scaffoldGithub(branch);
+	if (hasCi) scaffoldGithub(branch);
 
 	// Before installing: the postinstall's `lefthook install` needs the repository.
 	cmd(`git init -b ${shellQuote(branch)}`);

@@ -1,1 +1,1 @@
-No stack yet. After choosing one, replace the placeholder tasks in `.github/workflows/ci.yml`.
+No stack or CI yet. Add CI once the project has something to check.

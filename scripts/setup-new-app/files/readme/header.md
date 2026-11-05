@@ -4,4 +4,4 @@ Agents: this README is the scaffold's placeholder. Once the project is fleshed o
 
 # {{APP_NAME}}
 
-Created on {{DATE}} with [setup-new-app](https://github.com/smirea/stefan-utils/tree/master/scripts/setup-new-app) (`--type {{TYPE}}`). `.github/CI.md` describes the CI checks.
+Created on {{DATE}} with [setup-new-app](https://github.com/smirea/stefan-utils/tree/master/scripts/setup-new-app) (`--type {{TYPE}}`).{{CI}}

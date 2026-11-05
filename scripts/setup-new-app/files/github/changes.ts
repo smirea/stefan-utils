@@ -15,7 +15,7 @@ const paths = (full ? [] : (await $`git diff --name-only -z ${comparison}`.text(
 	name => name && !['.md', '.rst'].includes(extname(name).toLowerCase()) && !name.startsWith('docs/'),
 );
 const common = full || paths.some(name => name.startsWith('.github/'));
-const bun = !['swift', 'empty'].includes(kind) && (common || paths.some(name => !name.startsWith('app-ios/')));
+const bun = kind !== 'swift' && (common || paths.some(name => !name.startsWith('app-ios/')));
 const swift =
 	['swift', 'monorepo-swift'].includes(kind) &&
 	(common ||
