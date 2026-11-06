@@ -33,7 +33,7 @@ const { args } = parseArgv({
 		type: {
 			type: 'string',
 			short: 't',
-			choices: ['node', 'client-server', 'monorepo-swift', 'swift', 'empty', 'svelte'],
+			choices: ['node', 'client-server', 'monorepo-swift', 'swift', 'empty', 'svelte', 'chrome-extension'],
 			default: 'client-server',
 		},
 		repo: {
@@ -509,6 +509,49 @@ void createScript(async function init() {
 			break;
 		case 'swift':
 			scaffoldSwift();
+			break;
+		case 'chrome-extension':
+			for (const file of ['AGENTS.md', 'tsconfig.json', 'wxt.config.ts']) {
+				disk.copyFile({ from: assetFilePath('chrome-extension/' + file), to: file });
+			}
+			disk.copyDir({ from: assetFilePath('chrome-extension/src'), to: 'src' });
+			const popup = 'src/entrypoints/popup/index.html';
+			disk.writeFile(
+				popup,
+				fs.readFileSync(disk.getAbsolutePath(popup), 'utf8').replaceAll('{{APP_NAME}}', () => args.name),
+			);
+			disk.writeFile(
+				'.gitignore',
+				fs.readFileSync(disk.getAbsolutePath('.gitignore'), 'utf8') + '\n# WXT\n.output\n.wxt\n',
+			);
+			for (const file of ['.oxlintrc.json', '.oxfmtrc.json']) {
+				disk.updateJsonFile(file, data => ({ ...data, ignorePatterns: [...data.ignorePatterns, '.output', '.wxt'] }));
+			}
+			disk.updateJsonFile('package.json', data => ({
+				...data,
+				version: '0.1.0',
+				type: 'module',
+				scripts: {
+					...data.scripts,
+					postinstall: 'wxt prepare && lefthook install',
+					dev: 'wxt',
+					'dev:firefox': 'wxt -b firefox',
+					build: 'wxt build',
+					zip: 'wxt zip',
+				},
+			}));
+			dependencies.push(
+				'wxt',
+				'web-ext',
+				'@wxt-dev/module-react',
+				'react',
+				'react-dom',
+				'@types/react',
+				'@types/react-dom',
+				'@phosphor-icons/react',
+				'@tailwindcss/vite',
+				'tailwindcss',
+			);
 			break;
 		default:
 			throw new Error(`Invalid type: ${args.type}`);

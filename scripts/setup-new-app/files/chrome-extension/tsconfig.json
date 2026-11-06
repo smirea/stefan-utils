@@ -1,0 +1,16 @@
+{
+	// `wxt prepare` (run by postinstall) generates the base config, its path aliases, and the extension types.
+	"extends": "./.wxt/tsconfig.json",
+	"compilerOptions": {
+		"types": ["bun"],
+		"jsx": "react-jsx",
+		"allowJs": true,
+		"noUncheckedIndexedAccess": false,
+		"noUnusedLocals": false,
+		"noUnusedParameters": false,
+		"noPropertyAccessFromIndexSignature": false
+	},
+	// TypeScript's wildcards skip dot folders, so the CI scripts and WXT types are listed by name.
+	"include": ["**/*", ".github/scripts", ".wxt/wxt.d.ts"],
+	"exclude": ["node_modules", ".output"]
+}
