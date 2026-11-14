@@ -1,6 +1,6 @@
 # stefan-utils
 
-Shared Bun utilities and app scaffolding templates. Run `./scripts/setup-new-app/index.ts --help` for options (or the installed `setup-new-app` wrapper).
+Shared Bun utilities and app scaffolding templates. Run `./scripts/setup-new-app/index.ts --help` for options (or `setup-new-app`, installed on PATH by running `bun link` in this repo).
 
 ```sh
 setup-new-app --name my-app --type monorepo-swift

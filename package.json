@@ -1,6 +1,9 @@
 {
 	"name": "stefan-utils",
 	"private": true,
+	"bin": {
+		"setup-new-app": "scripts/setup-new-app/index.ts"
+	},
 	"type": "module",
 	"module": "index.ts",
 	"scripts": {
