@@ -16,7 +16,8 @@ pre-commit:
             glob: '*.{js,mjs,mts,ts,tsx,svelte,json,jsonc}'
             run: bun run typecheck
           # The whole suite: logic tests run in-process in milliseconds, so selecting by diff would save little and
-          # could miss a test whose input is not an import.
+          # could miss a test whose input is not an import. Git exports GIT_DIR and GIT_INDEX_FILE to hooks, so a
+          # test that runs git in a temp directory would act on this repository unless they are unset first.
           - name: test
             glob: '*.{js,mjs,mts,ts,tsx,json}'
-            run: bun run test
+            run: unset $(git rev-parse --local-env-vars); bun run test

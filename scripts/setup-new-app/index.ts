@@ -364,7 +364,7 @@ void createScript(async function init() {
 			- name: swift-test
 			  root: app-ios/
 			  glob: '*.swift'
-			  run: '[ ! -d Tests ] || swift test'
+			  run: unset $(git rev-parse --local-env-vars); [ ! -d Tests ] || swift test
 		`;
 		disk.writeFile(
 			'lefthook.yml',
