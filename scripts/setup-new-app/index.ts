@@ -114,16 +114,21 @@ function scaffoldGithub(branch: string, clientServerNetwork?: { apiPort: number;
 			.map(line => (line ? ' '.repeat(spaces) + line : line))
 			.join('\n');
 	disk.createDir('.github/workflows');
-	disk.createDir('.github/scripts');
-	disk.copyFile({ from: assetFilePath('github/changes.ts'), to: '.github/scripts/changes.ts' });
 	disk.copyFile({ from: assetFilePath('github/CI.md'), to: '.github/CI.md' });
 	disk.copyFile({ from: assetFilePath('github/dependabot.yml'), to: '.github/dependabot.yml' });
-	if (hasSwift) disk.copyFile({ from: assetFilePath('github/swift.ts'), to: '.github/scripts/swift.ts' });
+	if (hasSwift) {
+		disk.createDir('.github/scripts');
+		for (const file of ['changes.ts', 'swift.ts']) {
+			disk.copyFile({ from: assetFilePath('github/' + file), to: '.github/scripts/' + file });
+		}
+	}
+	// Only the Swift jobs wait for change detection: it picks their macOS runner. The Bun jobs take seconds, so they
+	// start at once and always run.
 	const workflow =
 		template('ci.yml') +
-		'\n' +
-		(hasBunScaffold ? indent(template('bun.yml'), 2) : '') +
-		(hasSwift ? indent(template('swift.yml'), 2) : '');
+		[...(hasBunScaffold ? ['bun.yml'] : []), ...(hasSwift ? ['changes.yml', 'swift.yml'] : [])]
+			.map(file => indent(template(file), 2))
+			.join('\n');
 	disk.writeFile(
 		'.github/workflows/ci.yml',
 		workflow
@@ -354,6 +359,21 @@ void createScript(async function init() {
 				file === 'gitignore' ? '.gitignore' : file === 'vscode.code-workspace' ? args.name + '.code-workspace' : file;
 			disk.copyFile({ from: assetFilePath(prefix + file), to: destination });
 		}
+		const swiftJob = textBlock`
+			# Core's tests run on the Mac with no simulator. The first run in a new worktree also compiles the package.
+			- name: swift-test
+			  root: app-ios/
+			  glob: '*.swift'
+			  run: '[ ! -d Tests ] || swift test'
+		`;
+		disk.writeFile(
+			'lefthook.yml',
+			fs
+				.readFileSync(disk.getAbsolutePath('lefthook.yml'), 'utf8')
+				.replace(/^( *)# __SWIFT_JOB__\n/m, (_, indent: string) =>
+					args.type === 'monorepo-swift' ? swiftJob.replaceAll(/^/gm, indent) + '\n' : '',
+				),
+		);
 	}
 	cmd.setCWD(root);
 
@@ -587,6 +607,13 @@ void createScript(async function init() {
 			`${agentsContent}\n- Local web host: ${clientHost} -> ${clientPort}; browser API calls use the /api proxy.\n`,
 		);
 		if (clientServerNetwork.needsLocaliasSetup) cmd(`localias set ${clientHost} ${clientPort}`);
+	}
+	if (hasBunScaffold) {
+		disk.writeFile(
+			'AGENTS.md',
+			fs.readFileSync(disk.getAbsolutePath('AGENTS.md'), 'utf8') +
+				fs.readFileSync(assetFilePath('AGENTS.checks.md'), 'utf8'),
+		);
 	}
 	writeReadme(clientServerNetwork);
 	const branch = existingRepo?.defaultBranchRef?.name ?? 'master';

@@ -5,5 +5,8 @@ let package = Package(
     name: __PACKAGE_NAME__,
     platforms: [.iOS(.v27), .macOS(.v27)],
     products: [.executable(name: __PACKAGE_NAME__, targets: ["App"])],
-    targets: [.executableTarget(name: "App")]
+    targets: [
+        .target(name: "Core"),
+        .executableTarget(name: "App", dependencies: ["Core"]),
+    ]
 )

@@ -7,7 +7,7 @@ swift:
   strategy:
     fail-fast: false
     matrix:
-      task: [checks, tests, build]
+      task: [package, app]
   env:
     SWIFT_DIRECTORY: __SWIFT_DIRECTORY__
     CI: 'true'

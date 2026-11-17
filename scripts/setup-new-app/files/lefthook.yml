@@ -15,12 +15,9 @@ pre-commit:
           - name: typecheck
             glob: '*.{js,mjs,mts,ts,tsx,json,jsonc}'
             run: bun check
+          # The whole suite: logic tests run in-process in milliseconds, so selecting by diff would save little and
+          # could miss a test whose input is not an import.
           - name: test
-            glob: '*.{js,mjs,mts,ts,tsx}'
-            run: bun --no-env-file scripts/test-changed.ts {staged_files}
-
-pre-push:
-  commands:
-    test:
-      glob: '*.{js,mjs,mts,ts,tsx}'
-      run: bun --no-env-file scripts/test-changed.ts {push_files}
+            glob: '*.{js,mjs,mts,ts,tsx,json}'
+            run: bun run test
+          # __SWIFT_JOB__

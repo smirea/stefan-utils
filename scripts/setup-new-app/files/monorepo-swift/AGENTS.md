@@ -4,3 +4,4 @@
 - The web client lives in `app-web/`. Root `start` runs it and the server together. `start:client` and `start:server` run each individually; iOS runs separately.
 - The root env-manager schema declares each directory target with explicit output paths: TypeScript values at `.env.local` and readers at `src/env.ts`, native values at `Config/LocalSecrets.xcconfig` with the committed check script `Config/check-env.sh`. Regenerate the nested xcconfig with `env-manager gen --local`; never hand-edit `app-ios/Config/LocalSecrets.xcconfig`.
 - `Config/Base.xcconfig` and `Config/Info.plist` bridge selected settings into `AppEnvironment.apiURL`. Native settings are bundled; server credentials belong exclusively to the server target.
+- The pre-commit hook runs `swift test` in `app-ios/` when a Swift file is staged and `app-ios/Tests` exists.

@@ -19,4 +19,10 @@
 - Physical devices need Xcode pairing, Developer Mode, and an unlocked screen. Configure automatic signing in Xcode, pass `--team`, or set `SWIFT_RUN_DEVELOPMENT_TEAM`.
 - Edit SwiftUI code and resources in `Sources/App`; Xcode picks up new files automatically. Open `App.xcodeproj` and use the shared `App` scheme for debugging.
 - Build errors leave the watcher running; fix the error and save again. Build output is in `DerivedData/device/build.log`, `DerivedData/simulator/build.log`, or `DerivedData/mac/build.log`.
-- `swift build` checks the shared code on macOS. Use the Xcode project for simulator builds and bundled resources; `swift run` launches the macOS executable.
+- Use the Xcode project for simulator builds and bundled resources; `swift run` launches the macOS executable.
+
+# Logic and tests
+
+- `Sources/Core` is a library with no UI or device framework imports (SwiftUI, UIKit, HealthKit, WidgetKit, ActivityKit). Logic with rules worth testing lives there, with `public` on what the app uses, and `Sources/App` reads it through `import Core`. A logic type that needs a color, an icon, or a view gets it from an extension in `Sources/App`.
+- Tests cover `Core` only and run with `swift test` on the Mac in about a second, with no app build and no simulator. The app target has no test target, so don't add one. The first test adds `Tests/CoreTests/` and `.testTarget(name: "CoreTests", dependencies: ["Core"])` to `Package.swift`. Read the `tests` skill for what earns a test.
+- `swift test` also compiles `Sources/App` for macOS, so it is the fastest compile check. CI runs it as the `package` job and builds the Xcode project as the `app` job.
