@@ -66,7 +66,6 @@ const root = path.join(args.path, args.name);
 const defaultClientPort = 3000;
 const assetFilePath = (file: string) => path.join(__dirname, 'files', file);
 const hasClientServer = args.type === 'client-server' || args.type === 'monorepo-swift';
-const envManagerDependency = 'github:smirea/env-manager#1b0393e4423946c0be7c6156d69974314cedb294';
 const hasBunScaffold = args.type !== 'swift' && args.type !== 'empty';
 const hasEnv = hasClientServer || args.type === 'svelte';
 const hasCi = args.type !== 'empty';
@@ -90,7 +89,23 @@ function ignoreEnvReaders(readers: string[]) {
 	}
 }
 
-function scaffoldGithub(branch: string) {
+// CI never runs env-manager, so no per-target values file exists there. A script that runs from a subdirectory, and
+// xcodebuild, read the required schema defaults from the workflow's environment instead.
+function workflowEnv(network: { apiPort: number; clientPort: number }) {
+	return textBlock`
+		# The schema defaults that the committed readers and check scripts require. CI never runs env-manager, so no
+		# per-target values file exists: scripts that run from a subdirectory and xcodebuild read these instead. Nothing
+		# here is secret. A job that needs a credential takes it from a repository secret.
+		env:
+		  API_URL: http://127.0.0.1:${network.apiPort}
+		  API_PORT: ${network.apiPort}
+		  CLIENT_PORT: ${network.clientPort}
+		  APP_ENV: development
+
+	`;
+}
+
+function scaffoldGithub(branch: string, clientServerNetwork?: { apiPort: number; clientPort: number }) {
 	const hasSwift = args.type === 'swift' || args.type === 'monorepo-swift';
 	const template = (file: string) => fs.readFileSync(assetFilePath('github/' + file), 'utf8');
 	const indent = (content: string, spaces: number) =>
@@ -115,7 +130,7 @@ function scaffoldGithub(branch: string) {
 			.replaceAll('__BRANCH__', JSON.stringify(branch))
 			.replaceAll('__TYPE__', args.type)
 			.replaceAll('__SWIFT_DIRECTORY__', args.type === 'monorepo-swift' ? 'app-ios' : '.')
-			.replaceAll('__PREPARE_ENV__', hasEnv ? 'bun run env:generate' : 'echo "No environment generation needed"')
+			.replaceAll('# __ENV__\n', hasClientServer ? workflowEnv(clientServerNetwork!) + '\n\n' : '')
 			.replaceAll('      # __SWIFT_ENV__', args.type === 'monorepo-swift' ? indent(template('swift-env.yml'), 6) : ''),
 	);
 	disk.writeFile('.bun-version', Bun.version + '\n');
@@ -265,7 +280,14 @@ function scaffoldSwift(directory = '.') {
 					: '',
 			)
 			.replaceAll('__CONFIG_REFERENCE__', hasConfig ? 'baseConfigurationReference = A00000000000000000000016;' : '')
-			.replaceAll('__CONFIG_BUILD_SETTINGS__', hasConfig ? 'INFOPLIST_FILE = Config/Info.plist;' : ''),
+			.replaceAll('__CONFIG_BUILD_SETTINGS__', hasConfig ? 'INFOPLIST_FILE = Config/Info.plist;' : '')
+			.replaceAll('__CHECK_ENV_PHASE_REFERENCE__', hasConfig ? 'A000000000000000000000E1, ' : '')
+			.replaceAll(
+				'__CHECK_ENV_PHASE__',
+				hasConfig
+					? 'A000000000000000000000E1 = { isa = PBXShellScriptBuildPhase; alwaysOutOfDate = 1; buildActionMask = 2147483647; files = (); inputPaths = ("$(SRCROOT)/Config/check-env.sh"); name = "Check environment"; outputPaths = (); runOnlyForDeploymentPostprocessing = 0; shellPath = /bin/sh; shellScript = "\\"$SRCROOT/Config/check-env.sh\\"\\n"; };'
+					: '',
+			),
 	);
 	if (directory !== '.') {
 		for (const file of ['README', 'AGENTS']) {
@@ -383,7 +405,7 @@ void createScript(async function init() {
 					# env-manager local:true
 					# env-manager target: ${webDirectory} format=ts path=.env.local generate=src/env.ts
 					# env-manager target: server format=ts path=.env.local generate=src/env.ts
-					${hasIos ? '# env-manager target: app-ios format=swift path=Config/LocalSecrets.xcconfig' : ''}
+					${hasIos ? '# env-manager target: app-ios format=swift path=Config/LocalSecrets.xcconfig generate=Config/check-env.sh' : ''}
 
 					# env-manager targets: ${hasIos ? `${webDirectory},app-ios` : webDirectory}
 					API_URL=http://127.0.0.1:${network.apiPort} # {url}
@@ -574,12 +596,8 @@ void createScript(async function init() {
 	if (hasEnv) {
 		cmd('env-manager init --local');
 		cmd('env-manager gen --local');
-		disk.updateJsonFile('package.json', data => ({
-			...data,
-			devDependencies: { ...data.devDependencies, 'env-manager': envManagerDependency },
-		}));
 	}
-	if (hasCi) scaffoldGithub(branch);
+	if (hasCi) scaffoldGithub(branch, clientServerNetwork);
 
 	// Before installing: the postinstall's `lefthook install` needs the repository.
 	cmd(`git init -b ${shellQuote(branch)}`);

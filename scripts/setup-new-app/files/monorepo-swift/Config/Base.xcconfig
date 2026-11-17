@@ -1,1 +1,3 @@
-#include "LocalSecrets.xcconfig"
+// The checkout's values, written by `env-manager gen --local`. Optional, because CI builds without it: xcodebuild
+// resolves $(API_URL) from its environment, and Config/check-env.sh fails the build when no value arrives either way.
+#include? "LocalSecrets.xcconfig"

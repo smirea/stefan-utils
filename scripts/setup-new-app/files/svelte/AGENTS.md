@@ -18,6 +18,7 @@
 
 - Environment files are managed by `env-manager`. Keep `.env` tracked with harmless defaults and `.env.local` ignored for local values.
 - Edit root `.env.local`, run `bun run env:generate`, and commit the reader exactly as generated. `local:true` avoids AWS calls and automatic Git updates.
+- env-manager is a global tool on the developer's machine, never a dependency and never run in CI. A new required setting needs a harmless default in the root `.env`; a secret stays optional in the schema and is required by the server's config in production. Bun loads the tracked defaults for scripts run from the repository root, so CI needs no values file. A job that needs a credential takes it with `${{ secrets.NAME }}` after `env-manager sync github <env> --only NAME`.
 - The server reads settings through `apps/server/src/config.ts`, which fails at startup when production lacks a setting.
 
 # Frontend

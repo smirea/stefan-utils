@@ -5,8 +5,6 @@
     key: ${{ runner.os }}-${{ runner.arch }}-bun-${{ hashFiles('.bun-version') }}-${{ hashFiles('bun.lock', 'bun.lockb') }}
     restore-keys: |
       ${{ runner.os }}-${{ runner.arch }}-bun-${{ hashFiles('.bun-version') }}-
-- name: Generate native environment from tracked defaults
+- name: Install dependencies
   if: needs.changes.outputs.swift == 'true'
-  run: |
-    bun install --frozen-lockfile
-    bun run env:generate
+  run: bun install --frozen-lockfile

@@ -38,7 +38,7 @@
         A00000000000000000000005 = {
             isa = PBXNativeTarget;
             buildConfigurationList = A00000000000000000000011;
-            buildPhases = (A00000000000000000000007, A00000000000000000000008, A00000000000000000000009);
+            buildPhases = (__CHECK_ENV_PHASE_REFERENCE__A00000000000000000000007, A00000000000000000000008, A00000000000000000000009);
             buildRules = ();
             dependencies = ();
             fileSystemSynchronizedGroups = (A00000000000000000000004);
@@ -54,6 +54,7 @@
             path = App.app;
             sourceTree = BUILT_PRODUCTS_DIR;
         };
+        __CHECK_ENV_PHASE__
         A00000000000000000000007 = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
         A00000000000000000000008 = { isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
         A00000000000000000000009 = { isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };

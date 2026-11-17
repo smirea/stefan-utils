@@ -15,6 +15,7 @@
 # Environment
 
 - Use env-manager's root `.env` schema and named directory targets. Edit values only in the root `.env.local`, then run `bun run env:generate`. Child values and readers are generated projections, not independent configs; commit readers exactly as generated.
+- env-manager is a global tool on the developer's machine, never a dependency and never run in CI. A new required setting needs a harmless default in the root `.env`; a secret stays optional in the schema and is required by the server's config in production. If CI fails naming a variable, add its default to the workflow's `env:`, or pass a secret with `${{ secrets.NAME }}` after `env-manager sync github <env> --only NAME`.
 - `local:true` keeps generation offline and disables automatic Git updates. Use `env-manager --help` for schema types, target selection, and remote storage.
 - Read application settings through generated `src/env.ts` in each TypeScript target. The server reads them through `server/src/config.ts`, which fails at startup when production lacks a setting. The client's reader runs only in Vite's Node context; browser code must not import it.
 - Keep schema and readers tracked, values files and `.env.override` ignored, and secrets scoped to the server target. Native and browser settings are public.

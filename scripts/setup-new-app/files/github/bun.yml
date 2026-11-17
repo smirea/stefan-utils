@@ -37,9 +37,6 @@ bun:
     - name: Install dependencies
       if: needs.changes.outputs.bun == 'true'
       run: bun install --frozen-lockfile
-    - name: Generate environment from tracked defaults
-      if: needs.changes.outputs.bun == 'true'
-      run: __PREPARE_ENV__
     - name: Checks
       if: needs.changes.outputs.bun == 'true' && matrix.task == 'checks'
       run: bun run lint:ci && bun run typecheck
