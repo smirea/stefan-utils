@@ -7,6 +7,8 @@
 		"DerivedData",
 		"dist",
 		"build",
+		"out",
+		".svelte-kit",
 		"generated",
 		"**/generated",
 		"**/*.generated.ts",
@@ -18,5 +20,6 @@
 	"singleQuote": true,
 	"trailingComma": "all",
 	"arrowParens": "avoid",
-	"jsxSingleQuote": true
+	"jsxSingleQuote": true,
+	"svelte": true
 }

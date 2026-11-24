@@ -1,4 +1,4 @@
-Manifest V3 browser extension built with WXT, React, and Tailwind.
+Manifest V3 browser extension built with WXT, Svelte, and Tailwind.
 
 - `src/entrypoints/background.ts`: service worker
 - `src/entrypoints/content.ts`: content script for the pages it matches

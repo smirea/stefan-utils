@@ -33,7 +33,7 @@ const { args } = parseArgv({
 		type: {
 			type: 'string',
 			short: 't',
-			choices: ['node', 'client-server', 'monorepo-swift', 'swift', 'empty', 'svelte', 'chrome-extension'],
+			choices: ['node', 'client-server', 'monorepo-swift', 'swift', 'empty', 'chrome-extension'],
 			default: 'client-server',
 		},
 		repo: {
@@ -67,7 +67,7 @@ const defaultClientPort = 3000;
 const assetFilePath = (file: string) => path.join(__dirname, 'files', file);
 const hasClientServer = args.type === 'client-server' || args.type === 'monorepo-swift';
 const hasBunScaffold = args.type !== 'swift' && args.type !== 'empty';
-const hasEnv = hasClientServer || args.type === 'svelte';
+const hasEnv = hasClientServer;
 const hasCi = args.type !== 'empty';
 
 function scaffoldTooling() {
@@ -99,7 +99,7 @@ function workflowEnv(network: { apiPort: number; clientPort: number }) {
 		env:
 		  API_URL: http://127.0.0.1:${network.apiPort}
 		  API_PORT: ${network.apiPort}
-		  CLIENT_PORT: ${network.clientPort}
+		  UI_PORT: ${network.clientPort}
 		  APP_ENV: development
 
 	`;
@@ -154,7 +154,6 @@ function writeReadme(network?: { clientHost?: string; clientPort: number }) {
 			.replaceAll('{{APP_NAME}}', () => args.name)
 			.replaceAll('{{DATE}}', new Date().toISOString().slice(0, 10))
 			.replaceAll('{{TYPE}}', args.type)
-			.replaceAll('{{WEB_DIRECTORY}}', args.type === 'monorepo-swift' ? 'app-web' : 'client')
 			.replaceAll('{{WEB_URL}}', webUrl ?? '')
 			.replaceAll('{{CI}}', hasCi ? ' `.github/CI.md` describes the CI checks.' : ''),
 	);
@@ -346,19 +345,15 @@ void createScript(async function init() {
 	if (args.type === 'swift') {
 		disk.copyFile({ from: assetFilePath('swift/vscode.code-workspace'), to: args.name + '.code-workspace' });
 	} else if (hasBunScaffold) {
-		const prefix = args.type === 'svelte' ? 'svelte/' : '';
-		for (const file of [
-			'gitignore',
-			'tsconfig.json',
-			'lefthook.yml',
-			'.oxlintrc.json',
-			'.oxfmtrc.json',
-			'vscode.code-workspace',
-		]) {
+		for (const file of ['gitignore', 'lefthook.yml', '.oxlintrc.json', '.oxfmtrc.json', 'vscode.code-workspace']) {
 			const destination =
 				file === 'gitignore' ? '.gitignore' : file === 'vscode.code-workspace' ? args.name + '.code-workspace' : file;
-			disk.copyFile({ from: assetFilePath(prefix + file), to: destination });
+			disk.copyFile({ from: assetFilePath(file), to: destination });
 		}
+		disk.copyFile({
+			from: assetFilePath(hasClientServer ? 'client-server/tsconfig.json' : 'tsconfig.json'),
+			to: 'tsconfig.json',
+		});
 		const swiftJob = textBlock`
 			# Core's tests run on the Mac with no simulator. The first run in a new worktree also compiles the package.
 			- name: swift-test
@@ -410,110 +405,35 @@ void createScript(async function init() {
 			}));
 			break;
 		case 'client-server':
-		case 'monorepo-swift':
+		case 'monorepo-swift': {
 			const network = clientServerNetwork!;
 			const hasIos = args.type === 'monorepo-swift';
-			const webDirectory = hasIos ? 'app-web' : 'client';
-			for (const directory of ['server', 'shared', 'client']) {
-				disk.copyDir({ from: assetFilePath(directory), to: directory === 'client' ? webDirectory : directory });
-			}
-			disk.updateJsonFile(path.join(webDirectory, 'package.json'), data => ({ ...data, name: webDirectory }));
+			disk.copyFile({ from: assetFilePath('client-server/AGENTS.md'), to: 'AGENTS.md' });
+			console.log(style.header('create server'));
+			disk.copyDir({ from: assetFilePath('client-server/apps/server'), to: 'apps/server' });
+			console.log(style.header('create ui'));
+			disk.copyDir({ from: assetFilePath('client-server/apps/ui'), to: 'apps/ui' });
+			console.log(style.header('create shared'));
+			disk.copyDir({ from: assetFilePath('client-server/packages/shared'), to: 'packages/shared' });
 			disk.writeFile(
 				'.env',
 				textBlock`
 					# env-manager: ${args.name}
 					# env-manager local:true
-					# env-manager target: ${webDirectory} format=ts path=.env.local generate=src/env.ts
-					# env-manager target: server format=ts path=.env.local generate=src/env.ts
+					# env-manager target: apps/ui format=ts path=.env.local generate=env.ts
+					# env-manager target: apps/server format=ts path=.env.local generate=src/env.ts
 					${hasIos ? '# env-manager target: app-ios format=swift path=Config/LocalSecrets.xcconfig generate=Config/check-env.sh' : ''}
 
-					# env-manager targets: ${hasIos ? `${webDirectory},app-ios` : webDirectory}
-					API_URL=http://127.0.0.1:${network.apiPort} # {url}
+					${hasIos ? '# env-manager targets: apps/ui,app-ios\nAPI_URL=http://127.0.0.1:' + network.apiPort + ' # {url}\n\n# env-manager targets: apps/ui' : '# env-manager targets: apps/ui\nAPI_URL=http://127.0.0.1:' + network.apiPort + ' # {url}'}
+					UI_PORT=${network.clientPort} # {int:min(1),max(65535)}
+					UI_HOST=${network.clientHost ?? ''} # {optional string}
 
-					# env-manager targets: ${webDirectory}
-					CLIENT_PORT=${network.clientPort} # {int:min(1),max(65535)}
-					CLIENT_HOST=${network.clientHost ?? ''} # {optional string}
-
-					# env-manager targets: server
+					# env-manager targets: apps/server
 					API_PORT=${network.apiPort} # {int:min(1),max(65535)}
-					# \`production\` in env-manager prod. server/src/config.ts requires production-only secrets.
+					# \`production\` in env-manager prod. apps/server/src/config.ts requires production-only secrets.
 					APP_ENV=development # {string:format(/^(development|production)$/)}
 				`,
 			);
-			disk.updateJsonFile('package.json', data => ({
-				...data,
-				workspaces: ['server', webDirectory],
-				scripts: {
-					...data.scripts,
-					build: `bun run --cwd ${webDirectory} build && bun build server/src/index.ts --target bun --outdir server/dist`,
-					typecheck: 'bun check',
-					start: 'concurrently --raw -k -s first "bun run start:server" "bun run start:client"',
-					'start:client': `bun run --cwd ${webDirectory} start`,
-					'start:server': 'bun run --cwd server start',
-					...(hasIos ? { 'start:ios': 'bun app-ios/scripts/run' } : {}),
-					dev: 'bun run start',
-					'client:dev': 'bun run start:client',
-					'server:dev': 'bun run start:server',
-					'env:generate': 'env-manager gen --local',
-				},
-			}));
-			const agents = fs.readFileSync(assetFilePath('AGENTS.client-server.md'), 'utf8');
-			disk.writeFile('AGENTS.md', agents.replaceAll('{{WEB_DIRECTORY}}', webDirectory));
-			if (hasIos) {
-				scaffoldSwift('app-ios');
-				const content = fs.readFileSync(disk.getAbsolutePath('AGENTS.md'), 'utf8');
-				disk.writeFile('AGENTS.md', content + fs.readFileSync(assetFilePath('monorepo-swift/AGENTS.md'), 'utf8'));
-			}
-			ignoreEnvReaders([`${webDirectory}/src/env.ts`, 'server/src/env.ts']);
-			dependencies.push(
-				'concurrently',
-				'zod',
-				'react',
-				'react-dom',
-				'vite',
-				'@types/react',
-				'@types/react-dom',
-				'@vitejs/plugin-react',
-				'@tanstack/react-router',
-				'@tanstack/router-plugin',
-				'@phosphor-icons/react',
-				'@tailwindcss/vite',
-				'tailwindcss',
-			);
-			break;
-		case 'svelte':
-			disk.copyFile({ from: assetFilePath('svelte/AGENTS.md'), to: 'AGENTS.md' });
-
-			const svelteNetwork = clientServerNetwork!;
-			const uiUrl = svelteNetwork.clientHost
-				? `http://${svelteNetwork.clientHost}`
-				: `http://localhost:${svelteNetwork.clientPort}`;
-			const serverUrl = `http://127.0.0.1:${svelteNetwork.apiPort}`;
-			disk.writeFile(
-				'.env',
-				textBlock`
-						# env-manager: ${args.name} | ${new Date().toISOString()}
-						# env-manager local:true
-						# env-manager generate: packages/shared/src/env.ts
-
-						UI_URL=${uiUrl} # {url}
-						SERVER_URL=${serverUrl} # {url}
-						UI_PORT=${svelteNetwork.clientPort} # {int}
-						PORT=${svelteNetwork.apiPort} # {int}
-						# \`production\` in env-manager prod. apps/server/src/config.ts requires production-only secrets.
-						APP_ENV=development # {string:format(/^(development|production)$/)}
-					`,
-			);
-
-			console.log(style.header('create server'));
-			disk.copyDir({ from: assetFilePath('svelte/apps/server'), to: 'apps/server' });
-
-			console.log(style.header('create ui'));
-			disk.copyDir({ from: assetFilePath('svelte/apps/ui'), to: 'apps/ui' });
-
-			console.log(style.header('create shared'));
-			disk.copyDir({ from: assetFilePath('svelte/packages/shared'), to: 'packages/shared' });
-			ignoreEnvReaders(['packages/shared/src/env.ts']);
 			disk.updateJsonFile('package.json', data => ({
 				...data,
 				type: 'module',
@@ -521,15 +441,15 @@ void createScript(async function init() {
 				scripts: {
 					build: 'bun --filter @repo/ui build && bun --filter @repo/server build',
 					dev: 'concurrently --raw -k -s first "bun --filter @repo/server dev" "bun --filter @repo/ui dev --host 127.0.0.1"',
-					format: 'oxfmt --write .',
-					lint: 'oxlint --fix && oxfmt --write .',
-					'lint:ci': 'oxlint && oxfmt --check .',
 					'env:generate': 'env-manager gen --local',
+					lint: 'oxlint --fix && oxfmt',
+					'lint:ci': 'oxlint && oxfmt --check',
 					postinstall: 'lefthook install',
 					'server:dev': 'bun --filter @repo/server dev',
 					'server:start': 'bun --filter @repo/server start',
 					'server:typecheck': 'bun --filter @repo/server typecheck',
 					start: 'bun --filter @repo/server start',
+					...(hasIos ? { 'start:ios': 'bun app-ios/scripts/run' } : {}),
 					test: 'bun test --pass-with-no-tests',
 					typecheck: 'bun --filter @repo/ui check && bun --filter @repo/server typecheck && bun check',
 					'ui:build': 'bun --filter @repo/ui build',
@@ -538,17 +458,27 @@ void createScript(async function init() {
 					'ui:preview': 'bun --filter @repo/ui preview',
 				},
 				devDependencies: {
-					'@types/node': '^26.6.5',
-					'@types/bun': '^1.4.4',
-					concurrently: '^10.0.6',
-					lefthook: '^2.2.1',
-					oxfmt: '^0.72.0',
-					oxlint: '^1.87.0',
+					'@types/node': '^26.6.6',
+					'@types/bun': '^1.4.5',
+					concurrently: '^10.0.7',
+					lefthook: '^2.2.2',
+					oxfmt: '^0.80.0',
+					oxlint: '^1.95.0',
 					// svelte-check-native and `bun check` type-check with TypeScript 7. @repo/ui keeps TypeScript 6 for SvelteKit, which needs the JS API TypeScript 7 lacks.
 					typescript: '^7.0.2',
 				},
 			}));
+			if (hasIos) {
+				scaffoldSwift('app-ios');
+				const content = fs.readFileSync(disk.getAbsolutePath('AGENTS.md'), 'utf8');
+				disk.writeFile(
+					'AGENTS.md',
+					content + '\n' + fs.readFileSync(assetFilePath('monorepo-swift/AGENTS.md'), 'utf8'),
+				);
+			}
+			ignoreEnvReaders(['apps/ui/env.ts', 'apps/server/src/env.ts']);
 			break;
+		}
 		case 'swift':
 			scaffoldSwift();
 			break;
@@ -576,6 +506,7 @@ void createScript(async function init() {
 				scripts: {
 					...data.scripts,
 					postinstall: 'wxt prepare && lefthook install',
+					typecheck: 'svelte-check-native --tsconfig ./tsconfig.json && bun check',
 					dev: 'wxt',
 					'dev:firefox': 'wxt -b firefox',
 					build: 'wxt build',
@@ -585,12 +516,10 @@ void createScript(async function init() {
 			dependencies.push(
 				'wxt',
 				'web-ext',
-				'@wxt-dev/module-react',
-				'react',
-				'react-dom',
-				'@types/react',
-				'@types/react-dom',
-				'@phosphor-icons/react',
+				'@wxt-dev/module-svelte',
+				'svelte',
+				'svelte-check-native',
+				'phosphor-svelte',
 				'@tailwindcss/vite',
 				'tailwindcss',
 			);
@@ -612,6 +541,7 @@ void createScript(async function init() {
 		disk.writeFile(
 			'AGENTS.md',
 			fs.readFileSync(disk.getAbsolutePath('AGENTS.md'), 'utf8') +
+				'\n' +
 				fs.readFileSync(assetFilePath('AGENTS.checks.md'), 'utf8'),
 		);
 	}
@@ -628,7 +558,7 @@ void createScript(async function init() {
 
 	// Before installing: the postinstall's `lefthook install` needs the repository.
 	cmd(`git init -b ${shellQuote(branch)}`);
-	if (args.type === 'svelte') {
+	if (hasClientServer) {
 		cmd('bun install');
 	} else if (hasBunScaffold) {
 		cmd('bun add ' + Array.from(new Set(dependencies)).sort().join(' '));
@@ -636,8 +566,6 @@ void createScript(async function init() {
 
 	if (hasBunScaffold) {
 		cmd('bun run lint');
-		// The build generates TanStack Router's route tree, which typecheck reads and the initial commit includes.
-		if (hasClientServer) cmd('bun run build');
 		cmd('bun run typecheck');
 	}
 	cmd('git add -A');

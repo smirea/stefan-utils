@@ -3,7 +3,7 @@ import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
 	srcDir: 'src',
-	modules: ['@wxt-dev/module-react'],
+	modules: ['@wxt-dev/module-svelte'],
 	// Explicit imports keep entrypoints readable without WXT's generated globals.
 	imports: false,
 	manifest: {

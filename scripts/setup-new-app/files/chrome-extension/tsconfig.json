@@ -3,7 +3,6 @@
 	"extends": "./.wxt/tsconfig.json",
 	"compilerOptions": {
 		"types": ["bun"],
-		"jsx": "react-jsx",
 		"allowJs": true,
 		"noUncheckedIndexedAccess": false,
 		"noUnusedLocals": false,

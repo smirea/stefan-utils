@@ -6,7 +6,6 @@
 		"target": "ESNext",
 		"module": "Preserve",
 		"moduleDetection": "force",
-		"jsx": "react-jsx",
 		"allowJs": true,
 
 		"moduleResolution": "bundler",
@@ -22,11 +21,7 @@
 
 		"noUnusedLocals": false,
 		"noUnusedParameters": false,
-		"noPropertyAccessFromIndexSignature": false,
-
-		"paths": {
-			"shared/*": ["./shared/*"]
-		}
+		"noPropertyAccessFromIndexSignature": false
 	},
 	// TypeScript's wildcards skip dot folders, so the CI scripts are listed by name.
 	"include": ["**/*", ".github/scripts"],

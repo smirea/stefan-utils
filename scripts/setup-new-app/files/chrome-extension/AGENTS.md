@@ -2,8 +2,8 @@
 
 - Tooling: Bun + TypeScript
 - Extension framework: WXT (Manifest V3), configured in `wxt.config.ts`
-- UI: React + Tailwind CSS (enabled in `src/entrypoints/popup/index.css`)
-- Linting and Hooks: Oxlint + Lefthook
+- UI: Svelte 5 + Tailwind CSS v4 (enabled in `src/entrypoints/popup/index.css`)
+- Linting and Hooks: Oxlint + oxfmt + Lefthook
 
 # Structure and commands
 
