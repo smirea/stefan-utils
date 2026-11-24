@@ -298,7 +298,7 @@ function scaffoldSwift(directory = ".") {
   disk.writeFile(
     projectFile,
     template
-      .replaceAll("{{APP_NAME}}", () => JSON.stringify(args.name))
+      .replaceAll("__APP_NAME__", () => JSON.stringify(args.name))
       .replaceAll("__BUNDLE_ID__", `com.stefan.${bundleName}`)
       .replaceAll("__CONFIG_GROUP_CHILD__", hasConfig ? "A00000000000000000000016, " : "")
       .replaceAll(
@@ -336,6 +336,40 @@ function scaffoldSwift(directory = ".") {
       from: assetFilePath("monorepo-swift/Environment.swift"),
       to: target("Sources/App/Environment.swift"),
     });
+  }
+}
+
+const placeholderPattern = /__[A-Z][A-Z0-9_]*__|\{\{[A-Z][A-Z0-9_]*\}\}/g;
+const binaryExtensions = new Set([
+  ".png",
+  ".jpg",
+  ".jpeg",
+  ".gif",
+  ".ico",
+  ".icns",
+  ".webp",
+  ".pdf",
+  ".woff",
+  ".woff2",
+]);
+
+function assertNoUnreplacedTokens(directory: string) {
+  const hits: string[] = [];
+  for (const rel of fs.readdirSync(directory, { recursive: true, encoding: "utf8" })) {
+    if (rel.startsWith(".git/") || rel.startsWith("node_modules/")) continue;
+    const full = path.join(directory, rel);
+    if (fs.lstatSync(full).isDirectory()) continue;
+    if (binaryExtensions.has(path.extname(rel).toLowerCase())) continue;
+    const content = fs.readFileSync(full, "utf8");
+    const lines = content.split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      for (const match of lines[i]!.matchAll(placeholderPattern)) {
+        hits.push(`  ${rel}:${i + 1}: ${match[0]}`);
+      }
+    }
+  }
+  if (hits.length) {
+    throw new Error(`Unreplaced template placeholders in scaffolded output:\n${hits.join("\n")}`);
   }
 }
 
@@ -592,6 +626,7 @@ void createScript(async function init() {
     cmd("env-manager gen --local");
   }
   if (hasCi) scaffoldGithub(branch, clientServerNetwork);
+  assertNoUnreplacedTokens(root);
 
   // Before installing: the postinstall's `lefthook install` needs the repository.
   cmd(`git init -b ${shellQuote(branch)}`);
