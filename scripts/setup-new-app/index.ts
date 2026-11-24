@@ -340,15 +340,8 @@ function scaffoldSwift(directory = ".") {
 }
 
 void createScript(async function init() {
-  const dependencies = [
-    "@types/bun",
-    "es-toolkit",
-    "lodash",
-    "typescript",
-    "oxlint",
-    "lefthook",
-    "kill-port-process",
-  ];
+  const dependencies: string[] = ["es-toolkit"];
+  const devDependencies: string[] = ["@types/bun", "lefthook", "oxlint", "typescript"];
 
   console.log(style.header("create root"));
   const overwriteExistingRepo = args["overwrite-existing-repo"];
@@ -419,7 +412,7 @@ void createScript(async function init() {
       private: true,
       packageManager: `bun@${Bun.version}`,
       scripts: {
-        postinstall: "lefthook install",
+        postinstall: "[ ! -d .git ] || lefthook install",
         lint: "oxlint --fix",
         "lint:ci": "oxlint",
         typecheck: "bun check",
@@ -444,6 +437,7 @@ void createScript(async function init() {
           build: "bun build src/index.ts --target bun --outdir dist",
         },
       }));
+      dependencies.push("lodash", "kill-port-process");
       break;
     case "client-server":
     case "monorepo-swift": {
@@ -485,7 +479,7 @@ void createScript(async function init() {
           "env:generate": "env-manager gen --local",
           lint: "oxlint --fix",
           "lint:ci": "oxlint",
-          postinstall: "lefthook install",
+          postinstall: "[ ! -d .git ] || lefthook install",
           "server:dev": "bun --filter @repo/server dev",
           "server:start": "bun --filter @repo/server start",
           "server:typecheck": "bun --filter @repo/server typecheck",
@@ -549,7 +543,7 @@ void createScript(async function init() {
         type: "module",
         scripts: {
           ...data.scripts,
-          postinstall: "wxt prepare && lefthook install",
+          postinstall: "wxt prepare && ([ ! -d .git ] || lefthook install)",
           typecheck: "svelte-check-native --tsconfig ./tsconfig.json && bun check",
           dev: "wxt",
           "dev:firefox": "wxt -b firefox",
@@ -557,15 +551,14 @@ void createScript(async function init() {
           zip: "wxt zip",
         },
       }));
-      dependencies.push(
-        "wxt",
-        "web-ext",
-        "@wxt-dev/module-svelte",
-        "svelte",
-        "svelte-check-native",
-        "phosphor-svelte",
+      dependencies.push("phosphor-svelte", "svelte");
+      devDependencies.push(
         "@tailwindcss/vite",
+        "@wxt-dev/module-svelte",
+        "svelte-check-native",
         "tailwindcss",
+        "web-ext",
+        "wxt",
       );
       break;
     default:
@@ -605,7 +598,10 @@ void createScript(async function init() {
   if (hasClientServer) {
     cmd("bun install");
   } else if (hasBunScaffold) {
-    cmd("bun add " + Array.from(new Set(dependencies)).sort().join(" "));
+    if (dependencies.length)
+      cmd("bun add --ignore-scripts " + Array.from(new Set(dependencies)).sort().join(" "));
+    if (devDependencies.length)
+      cmd("bun add -D " + Array.from(new Set(devDependencies)).sort().join(" "));
   }
 
   if (hasBunScaffold) {

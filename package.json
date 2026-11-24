@@ -7,15 +7,16 @@
   "type": "module",
   "module": "index.ts",
   "scripts": {
+    "postinstall": "[ ! -d .git ] || lefthook install",
     "lint": "oxlint --fix && oxfmt --no-error-on-unmatched-pattern",
-    "lint:ci": "oxlint && oxfmt --check"
+    "lint:ci": "oxlint && oxfmt --check",
+    "typecheck": "bun check"
   },
   "dependencies": {
     "@types/bun": "^1.4.4",
     "@types/lodash": "^4.17.26",
     "chalk": "^6.0.1",
     "date-fns": "^4.4.0",
-    "globals": "^17.13.0",
     "lefthook": "^2.2.2",
     "lodash": "^4.18.1",
     "oxfmt": "^0.80.0",
