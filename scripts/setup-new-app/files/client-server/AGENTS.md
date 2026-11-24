@@ -4,7 +4,7 @@
 - Server: Bun.serve API (`apps/server/`)
 - UI: SvelteKit SPA (`apps/ui/`) with Svelte 5, TanStack Query, and Tailwind CSS v4
 - Shared: `@repo/shared` (`packages/shared/`)
-- Linting and Hooks: Oxlint + oxfmt + Lefthook
+- Linting and Hooks: Oxlint + Lefthook
 
 # Structure and commands
 

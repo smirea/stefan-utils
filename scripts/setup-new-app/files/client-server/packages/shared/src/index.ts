@@ -1,4 +1,4 @@
 export type StatusResponse = {
-	ok: true;
-	now: string;
+  ok: true;
+  now: string;
 };

@@ -6,12 +6,11 @@ pre-commit:
     - group:
         parallel: true
         jobs:
-          - name: oxlint
-            glob: '*.{js,ts,jsx,tsx}'
-            run: bunx oxlint --disable-nested-config --no-error-on-unmatched-pattern --fix {staged_files}
-            stage_fixed: true
-          - name: oxfmt
-            run: bunx oxfmt --no-error-on-unmatched-pattern {staged_files}
+          # One job: both fixers rewrite the same staged files, and in parallel one would overwrite the other's edit.
+          - name: fix
+            run: >-
+              bunx oxlint --fix --no-error-on-unmatched-pattern {staged_files}
+              && bunx oxfmt --no-error-on-unmatched-pattern {staged_files}
             stage_fixed: true
           - name: typecheck
             run: bun check

@@ -1,6 +1,7 @@
 # Scaffolding
 
 - Keep CLI orchestration in `scripts/setup-new-app/index.ts` and reusable generated files in `scripts/setup-new-app/files/`.
+- Only this repo runs `oxfmt` (with default agent-friendly formatting) to keep source and template files consistently seeded; generated templates omit `oxfmt`. Oxlint uses nested config loading so `files/.oxlintrc.json` lints the templates directly when running `oxlint` here.
 - Every web template uses Svelte 5. `client-server` and `monorepo-swift` share the SvelteKit + Bun workspace templates in `files/client-server/` (`apps/ui/`, `apps/server/`, `packages/shared/`). `scaffoldSwift` initializes standalone Swift or nested `app-ios/`; update the shared Swift assets instead of copying them into a second template.
 - `chrome-extension` keeps its WXT + Svelte config, entrypoints, and AGENTS in `files/chrome-extension/`. Its `tsconfig.json` extends the `.wxt/` config that `wxt prepare` generates on install.
 - Use env-manager for environment generation. The root `.env` declares schemas, directory targets, and explicit values/reader output paths; root `.env.local` supplies values, and child values/readers are generated. Scaffolding runs `init --local` and `gen --local` without AWS or automatic Git updates. env-manager is a global tool: generated apps never depend on it and their CI never runs it. Readers and the iOS `Config/check-env.sh` are committed and validate the environment; the workflow's `env:` carries the required defaults where targets live in subdirectories.

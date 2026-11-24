@@ -1,11 +1,11 @@
 {
-	"extends": "./tsconfig.base.json",
-	"include": ["src/**/*.ts", "scripts/**/*.ts"],
-	"compilerOptions": {
-		"rootDir": ".",
-		"paths": {
-			"src/*": ["./src/*"]
-		}
-	},
-	"exclude": ["node_modules", "scripts/setup-new-app/files"]
+  "extends": "./tsconfig.base.json",
+  "include": ["src/**/*.ts", "scripts/**/*.ts"],
+  "compilerOptions": {
+    "rootDir": ".",
+    "paths": {
+      "src/*": ["./src/*"]
+    }
+  },
+  "exclude": ["node_modules", "scripts/setup-new-app/files"]
 }

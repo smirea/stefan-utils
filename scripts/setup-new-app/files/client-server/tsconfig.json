@@ -1,28 +1,28 @@
 {
-	"compilerOptions": {
-		"allowImportingTsExtensions": true,
-		"lib": ["ESNext", "DOM"],
-		"module": "Preserve",
-		"moduleDetection": "force",
-		"moduleResolution": "bundler",
-		"noEmit": true,
-		"noFallthroughCasesInSwitch": true,
-		"noImplicitOverride": true,
-		"noPropertyAccessFromIndexSignature": false,
-		"noUnusedLocals": false,
-		"noUnusedParameters": false,
-		"paths": {
-			"@repo/shared": ["./packages/shared/src/index.ts"],
-			"@repo/shared/*": ["./packages/shared/src/*"]
-		},
-		"skipLibCheck": true,
-		"strict": true,
-		"target": "ESNext",
-		"types": ["bun"],
-		"verbatimModuleSyntax": true
-	},
-	// The apps check themselves. The root covers the repo scripts, and packages so editors open them with these options. TypeScript's wildcards skip dot folders, so those are listed by name.
-	"include": ["packages", "scripts", ".github/scripts"],
-	// Xcode checks Swift packages out under DerivedData, and some ship JavaScript that allowJs would check.
-	"exclude": ["node_modules", "**/DerivedData"]
+  "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "lib": ["ESNext", "DOM"],
+    "module": "Preserve",
+    "moduleDetection": "force",
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "paths": {
+      "@repo/shared": ["./packages/shared/src/index.ts"],
+      "@repo/shared/*": ["./packages/shared/src/*"]
+    },
+    "skipLibCheck": true,
+    "strict": true,
+    "target": "ESNext",
+    "types": ["bun"],
+    "verbatimModuleSyntax": true
+  },
+  // The apps check themselves. The root covers the repo scripts, and packages so editors open them with these options. TypeScript's wildcards skip dot folders, so those are listed by name.
+  "include": ["packages", "scripts", ".github/scripts"],
+  // Xcode checks Swift packages out under DerivedData, and some ship JavaScript that allowJs would check.
+  "exclude": ["node_modules", "**/DerivedData"]
 }

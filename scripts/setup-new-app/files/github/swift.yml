@@ -10,8 +10,8 @@ swift:
       task: [package, app]
   env:
     SWIFT_DIRECTORY: __SWIFT_DIRECTORY__
-    CI: 'true'
-    LEFTHOOK: '0'
+    CI: "true"
+    LEFTHOOK: "0"
   steps:
     - name: Verify change detection
       env:

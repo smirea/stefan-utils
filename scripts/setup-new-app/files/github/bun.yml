@@ -5,10 +5,10 @@ bun:
   strategy:
     fail-fast: false
     matrix:
-      task: ['lint:ci', typecheck, test, build]
+      task: ["lint:ci", typecheck, test, build]
   env:
-    CI: 'true'
-    LEFTHOOK: '0'
+    CI: "true"
+    LEFTHOOK: "0"
   steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
